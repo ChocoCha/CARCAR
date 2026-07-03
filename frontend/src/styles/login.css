@@ -1,0 +1,388 @@
+/* styles/login.css — สไตล์หน้า Login (มินิมอล เหลือง-เทา) */
+
+.fg-page {
+  --bg: #ebebeb;
+  --surface: #ffffff;
+  --ink: #232219;
+  --amber: #f5b400;
+  --amber-dim: #c9950a;
+  --amber-soft: #fcefc7;
+  --stone: #4f3d0a;
+  --line: #e6e2d6;
+  --panel-2: #f7b90e;
+
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 56px 20px;
+  background: var(--bg);
+  font-family: "Helvetica Neue", Arial, "Segoe UI", system-ui, sans-serif;
+  box-sizing: border-box;
+}
+
+.fg-page *,
+.fg-page *::before,
+.fg-page *::after {
+  box-sizing: border-box;
+}
+
+@keyframes fg-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fg-rise {
+  animation: fg-rise 380ms ease both;
+}
+
+.fg-container {
+  width: 100%;
+  max-width: 400px;
+}
+
+/* Brand */
+.fg-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 32px;
+}
+
+.fg-brand-mark {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--amber);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink);
+  flex-shrink: 0;
+}
+
+.fg-brand-name {
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--ink);
+}
+
+.fg-brand-sub {
+  font-size: 15px;
+  color: var(--stone);
+}
+
+/* Role toggle */
+.fg-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  margin-bottom: 20px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  
+}
+
+.fg-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 0;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: var(--stone);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 160ms ease;
+  font-family: inherit;
+}
+
+.fg-toggle-btn.is-active {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgba(3, 3, 3, 0.06);
+}
+
+/* Card */
+.fg-card {
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  padding: 28px;
+}
+
+.fg-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0 0 4px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fg-subtitle {
+  font-size: 12.5px;
+  color: var(--stone);
+  margin: 0 0 24px 0;
+}
+
+.fg-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.fg-field-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.fg-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--stone);
+  margin-bottom: 6px;
+}
+
+/* Inputs */
+.fg-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  padding: 10px 12px;
+  transition: border-color 160ms ease;
+}
+
+.fg-input-wrap:focus-within {
+  border-color: var(--amber-dim);
+}
+
+.fg-input-wrap svg {
+  color: var(--stone);
+  flex-shrink: 0;
+}
+
+.fg-input-wrap input {
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 14px;
+  color: var(--ink);
+  font-family: inherit;
+}
+
+.fg-input-wrap input::placeholder {
+  color: var(--stone);
+  opacity: 0.7;
+}
+
+/* Plate-style ID input */
+.fg-plate-tag {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: var(--stone);
+  flex-shrink: 0;
+}
+
+.fg-plate-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--line);
+  flex-shrink: 0;
+}
+
+.fg-plate-input {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.fg-plate-input::placeholder {
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.fg-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+/* Buttons */
+.fg-btn-primary {
+  width: 100%;
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 10px;
+  border: none;
+  padding: 13px 0;
+  font-size: 14px;
+  font-weight: 700;
+  background: var(--amber);
+  color: var(--ink);
+  cursor: pointer;
+  font-family: inherit;
+  transition: transform 120ms ease;
+}
+
+.fg-btn-primary:active {
+  transform: scale(0.98);
+}
+
+.fg-btn-primary.is-compact {
+  padding: 10px 0;
+  font-size: 13.5px;
+}
+
+.fg-hint {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--stone);
+}
+
+/* Employee list (admin panel) */
+.fg-list-section {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.fg-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.fg-list-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--stone);
+}
+
+.fg-list-count {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--amber-dim);
+}
+
+.fg-list {
+  max-height: 180px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-right: 4px;
+}
+
+.fg-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 10px;
+  padding: 8px 12px;
+  background: var(--panel-2);
+}
+
+.fg-list-item-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.fg-list-item-main svg {
+  color: var(--amber-dim);
+  flex-shrink: 0;
+}
+
+.fg-list-item-text {
+  min-width: 0;
+}
+
+.fg-list-item-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fg-list-item-meta {
+  font-size: 10.5px;
+  color: var(--stone);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  letter-spacing: 0.03em;
+}
+
+.fg-list-item-remove {
+  background: none;
+  border: none;
+  padding: 6px;
+  border-radius: 6px;
+  color: var(--stone);
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  transition: color 120ms ease;
+}
+
+.fg-list-item-remove:hover {
+  color: var(--amber-dim);
+}
+
+/* Status toast */
+.fg-toast-slot {
+  height: 44px;
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fg-toast {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.fg-toast.is-ok {
+  background: var(--amber-soft);
+  color: #8a6a00;
+  border: 1px solid var(--amber-dim);
+}
+
+.fg-toast.is-err {
+  background: #fbe7e2;
+  color: #b34632;
+  border: 1px solid #e0a492;
+}

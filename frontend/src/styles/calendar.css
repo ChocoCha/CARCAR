@@ -1,0 +1,233 @@
+/* calendar.css — สไตล์หน้า "ปฏิทินการจอง" (มินิมอล ธีมเหลือง-เทา) */
+
+.cal-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 18px;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden; /* กันไม่ให้อะไรดันออกนอกกรอบจนเกิด scroll แนวนอน */
+}
+
+.cal-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.cal-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cal-nav-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--stone);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.cal-nav-btn:hover {
+  border-color: var(--amber-dim);
+  color: var(--amber-dim);
+}
+
+.cal-month-label {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--ink);
+  min-width: 120px;
+  text-align: center;
+}
+
+.cal-today-btn {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 7px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.cal-today-btn:hover {
+  border-color: var(--amber-dim);
+}
+
+.cal-status {
+  color: var(--stone);
+  font-size: 13.5px;
+  padding: 20px 4px;
+}
+
+/* คำอธิบายสี — วางไว้บนสุด เหนือตารางปฏิทิน */
+.cal-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.cal-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink-soft, var(--ink));
+  white-space: nowrap;
+}
+
+.cal-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.cal-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 8px;
+  margin-bottom: 4px;
+}
+
+.cal-weekday {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--stone);
+  text-align: center;
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 3px;
+  width: 100%;
+}
+
+.cal-cell {
+  min-width: 0; /* สำคัญ: ให้ cell บีบตัวได้ตามจอ ไม่ดันตารางล้น */
+  min-height: 78px;
+  border-radius: 8px;
+  padding: 5px 4px 6px;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  overflow: hidden;
+}
+
+.cal-cell.is-outside {
+  opacity: 0.35;
+}
+
+.cal-cell.is-today {
+  background: var(--amber-soft);
+}
+
+.cal-cell-date {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.cal-cell-bookings {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cal-booking-bar {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #fff;
+  padding: 2px 4px;
+  border-radius: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cal-booking-more {
+  font-size: 9px;
+  color: var(--stone);
+  padding: 0 3px;
+}
+
+/* จอแท็บเล็ต */
+@media (max-width: 900px) {
+  .cal-cell {
+    min-height: 64px;
+  }
+}
+
+/* จอมือถือ — ย่อทุกอย่างลง แต่ยังคงกริด 7 คอลัมน์เท่าเดิม ไม่มี scroll แนวนอน */
+@media (max-width: 560px) {
+  .cal-card {
+    padding: 12px;
+    border-radius: 12px;
+  }
+
+  .cal-month-label {
+    font-size: 13px;
+    min-width: 0;
+  }
+
+  .cal-weekday {
+    font-size: 9.5px;
+  }
+
+  .cal-grid {
+    gap: 2px;
+  }
+
+  .cal-cell {
+    min-height: 46px;
+    padding: 3px 2px 4px;
+    border-radius: 6px;
+  }
+
+  .cal-cell-date {
+    font-size: 9.5px;
+  }
+
+  .cal-booking-bar {
+    font-size: 8px;
+    padding: 1px 3px;
+  }
+
+  .cal-booking-more {
+    font-size: 8px;
+  }
+
+  .cal-legend {
+    gap: 6px 10px;
+    padding: 8px 10px;
+  }
+
+  .cal-legend-item {
+    font-size: 10.5px;
+  }
+}

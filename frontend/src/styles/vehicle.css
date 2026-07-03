@@ -1,0 +1,252 @@
+/* vehicle.css */
+
+.vehicle-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 20px;
+}
+
+.vehicle-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow 160ms ease, transform 160ms ease;
+}
+
+.vehicle-card:hover {
+  box-shadow: 0 8px 24px rgba(35, 34, 25, 0.08);
+  transform: translateY(-2px);
+}
+
+.vehicle-card-image {
+  height: 150px;
+  background: var(--panel-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid var(--line);
+}
+
+.vehicle-card-image img {
+  height: 100%;
+  width: 100%;
+  object-fit: contain;
+  padding: 14px;
+}
+
+.vehicle-card-image-fallback {
+  color: var(--stone);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vehicle-card-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.vehicle-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.vehicle-card-plate {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  letter-spacing: 0.03em;
+}
+
+.vehicle-card-meta {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--stone);
+}
+
+.vehicle-card-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.vehicle-card-actions .btn {
+  width: 100%;
+}
+
+/* status badge */
+.status-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.status-badge.is-available {
+  background: var(--green-soft);
+  color: var(--green);
+}
+
+.status-badge.is-busy {
+  background: var(--red-soft);
+  color: var(--red);
+}
+
+.status-badge.is-maintenance {
+  background: var(--panel-2);
+  color: var(--stone);
+}
+
+/* ==========================================================================
+   CSS สไตล์เพิ่มเติมสำหรับระบบ Popup Modal และปฏิทินไทม์ไลน์แถบสี
+   ========================================================================== */
+
+/* --- ระบบ Popup Modal ครอบหน้าจอ --- */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(17, 24, 39, 0.5); /* สีเข้มโปร่งแสง */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  backdrop-filter: blur(4px); /* ทำพื้นหลังเบลอเพิ่มความพรีเมียม */
+}
+
+.booking-modal {
+  background-color: #ffffff;
+  border-radius: 16px;
+  width: 92%;
+  max-width: 620px;
+  padding: 28px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  border: 1px solid #f3f4f6;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+.modal-header h2 { font-size: 1.3rem; font-weight: 700; color: #111827; margin: 0; }
+.close-btn { background: none; border: none; cursor: pointer; color: #9ca3af; transition: color 0.2s; }
+.close-btn:hover { color: #ef4444; }
+
+.modal-vehicle-info {
+  display: flex;
+  gap: 20px;
+  background-color: #f9fafb;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid #f3f4f6;
+}
+.modal-car-img {
+  width: 160px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+.modal-car-details h4 { margin: 0 0 6px 0; font-size: 1.15rem; color: #111827; font-weight: 700; }
+.modal-car-details p { margin: 4px 0; font-size: 0.9rem; color: #4b5563; }
+.status-badge-ok { background-color: #d1fae5; color: #065f46; padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; }
+
+.modal-footer { display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; }
+
+/* --- ระบบปฏิทินไทม์ไลน์แถบสีแสดงผล (Timeline Grid) --- */
+.calendar-section {
+  background-color: #ffffff;
+  border-radius: 16px;
+  padding: 24px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.calendar-header-title { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; color: #111827; }
+.calendar-header-title h3 { margin: 0; font-size: 1.15rem; font-weight: 700; }
+
+.timeline-container { overflow-x: auto; width: 100%; border-radius: 12px; border: 1px solid #e5e7eb; }
+.timeline-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.timeline-table th, .timeline-table td { padding: 14px; border: 1px solid #e5e7eb; min-width: 100px; }
+.timeline-table th { background-color: #f9fafb; color: #4b5563; font-weight: 700; font-size: 0.8rem; text-transform: uppercase; }
+
+.sticky-col {
+  position: sticky;
+  left: 0;
+  background-color: #ffffff;
+  min-width: 200px !important;
+  z-index: 10;
+  border-right: 2px solid #e5e7eb !important;
+}
+.vehicle-title-cell { background-color: #f9fafb !important; color: #111827; }
+.timeline-day-cell { position: relative; padding: 6px 4px !important; vertical-align: middle; background-color: #fff; }
+
+.timeline-bar {
+  height: 30px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05), inset 0 -2px 0 rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: transform 0.15s, filter 0.2s;
+}
+.timeline-bar:hover { transform: scale(1.02); filter: brightness(0.95); }
+.timeline-bar-text { font-size: 0.75rem; font-weight: 700; color: #111827; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* --- แถบบล็อกแสดงชื่อผู้ล็อกอินบนหน้าโฮมแดชบอร์ด --- */
+.dashboard-user-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #fffdf5; /* สีโทนเหลืองครีมมินิมอลตามธีมหลัก */
+  border: 1px solid #fef3c7;
+  padding: 14px 20px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+}
+
+.user-banner-welcome {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.95rem;
+  color: #4b5563;
+}
+
+.user-banner-welcome strong {
+  color: #111827;
+  background-color: #fde68a; /* ไฮไลท์สีเหลืองทองที่ชื่อเด่นชัด */
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-weight: 700;
+}
+
+.user-banner-status {
+  font-size: 0.8rem;
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+@media (max-width: 600px) {
+  .dashboard-user-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}
