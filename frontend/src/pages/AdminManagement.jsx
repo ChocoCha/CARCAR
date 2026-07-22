@@ -57,7 +57,7 @@ export default function AdminManagement({ onNavigate }) {
     });
 
     if (res.ok) {
-      alert(isEdit ? "🎯 อัปเดตข้อมูลบัญชีพนักงานสำเร็จ!" : "✨ เพิ่มบัญชีลงฐานข้อมูลสำเร็จ!");
+      alert(isEdit ? "🎯 อัปเดตข้อมูลบัญชีพนักงานสำเร็จ!" : "✨ เพิ่มบัญชีสำเร็จ!");
       closeEmpModal();
       fetchEmployees();
     }
@@ -308,7 +308,7 @@ export default function AdminManagement({ onNavigate }) {
             <tbody>
               {bookings.length === 0 ? (
                 <tr>
-                  <td colSpan="5" style={{ padding: "20px", textAlign: "center", color: "#9ca3af", fontSize: "14px" }}>ยังไม่มีประวัติคิวการลงทะเบียนจองในฐานข้อมูลจริง</td>
+                  <td colSpan="5" style={{ padding: "20px", textAlign: "center", color: "#9ca3af", fontSize: "14px" }}>ยังไม่มีประวัติการจองคิว</td>
                 </tr>
               ) : (
                 bookings.map(b => (

@@ -265,7 +265,7 @@ export default function Dashboard({ onNavigate }) {
                 </div>
                 <div className="modal-footer" style={{ marginTop: "20px", display: "flex", justifyContent: "flex-end", gap: "10px" }}>
                   <button type="button" onClick={() => setModalMode(null)} style={{ padding: "8px 16px", border: "1px solid #d1d5db", backgroundColor: "#fff", color: "#4b5563", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "14px" }}>ยกเลิก</button>
-                  <button type="submit" style={{ padding: "8px 24px", backgroundColor: "#F59E0B", color: "#fff", border: "none", borderRadius: "6px", fontWeight: "700", cursor: "pointer", fontSize: "14px" }}>ยืนยันส่งใบจอง</button>
+                  <button type="submit" style={{ padding: "8px 24px", backgroundColor: "#F59E0B", color: "#fff", border: "none", borderRadius: "6px", fontWeight: "700", cursor: "pointer", fontSize: "14px" }}>ยืนยันการจอง</button>
                 </div>
               </form>
             )}
