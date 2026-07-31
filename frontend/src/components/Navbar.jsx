@@ -42,10 +42,7 @@ export default function Navbar({ onNavigate }) {
         
         {/* ❌ เอาปุ่มประวัติการจองเดิมออกเรียบร้อยแล้วตามบรีฟคัป */}
 
-        {/* ปุ่มแจ้งเตือน (Bell) */}
-        <button type="button" style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer", padding: "6px" }}>
-          <Bell size={18} />
-        </button>
+        
 
         {/* 👑 [แผง Dropdown โปรไฟล์ใหม่]: ครอบโครงสร้างไว้ด้วยระบบคลิกนุ่มตา */}
         <div ref={dropdownRef} style={{ position: "relative" }}>
