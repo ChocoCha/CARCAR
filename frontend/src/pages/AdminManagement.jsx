@@ -1,13 +1,15 @@
 import { useState, useEffect } from "react";
 import MainLayout from "../layouts/MainLayout";
-// 🟢 แก้ไข: เติม Layers เข้ามาในกลุ่มนำเข้า lucide-react เพื่อเคลียร์เออร์เรอร์ ReferenceError คัป
-import { User, Car, Plus, Trash2, Edit3, X, Upload, Layers } from "lucide-react";
+import { User, Car, Plus, Trash2, Edit3, X, Upload, Layers, CheckSquare, Square } from "lucide-react";
 
 export default function AdminManagement({ onNavigate }) {
   const [activeSubTab, setActiveSubTab] = useState("employees"); 
   const [employees, setEmployees] = useState([]);
   const [vehicles, setVehicles] = useState([]);
-  const [bookings, setBookings] = useState([]); // 🟢 เก็บประวัติการจองทั้งหมดของทุกคน
+  const [bookings, setBookings] = useState([]);
+
+  // State สำหรับคุมการติ๊กเลือก Checkbox หลายรายการ
+  const [selectedBookingIds, setSelectedBookingIds] = useState([]);
 
   // คุมการเปิด-ปิด ป๊อปอัป (Modal UI Control)
   const [isEmpModalOpen, setIsEmpModalOpen] = useState(false);
@@ -29,7 +31,10 @@ export default function AdminManagement({ onNavigate }) {
   function loadData() {
     if (activeSubTab === "employees") fetchEmployees();
     if (activeSubTab === "vehicles") fetchVehicles();
-    if (activeSubTab === "all_bookings") fetchAllBookings(); // 🚀 สั่งดึงประวัติจองทั้งหมดเวลากดเข้าแท็บนี้
+    if (activeSubTab === "all_bookings") {
+      fetchAllBookings();
+      fetchEmployees();
+    }
   }
 
   // ==================== [ API: พนักงาน ] ====================
@@ -111,7 +116,7 @@ export default function AdminManagement({ onNavigate }) {
     });
 
     if (res.ok) {
-      alert(isEdit ? "🎯 แก้ไขสเปครถและอัปโหลดไฟล์รูปภาพสำเร็จ!" : "✨ ลงทะเบียนยานพาหนะพร้อมไฟล์รูปภาพสำเร็จ!");
+      alert(isEdit ? "🎯 แก้ไขสเปครถสำเร็จ!" : "✨ ลงทะเบียนยานพาหนะสำเร็จ!");
       closeCarModal();
       fetchVehicles();
     } else {
@@ -142,24 +147,86 @@ export default function AdminManagement({ onNavigate }) {
     if(fileInput) fileInput.value = "";
   }
 
-  // ==================== [ API: ดึงข้อมูลคิวจองรวมของแอดมิน ] ====================
+  // ==================== [ API: ประวัติการจอง & ฟังก์ชั่นลบรายการ ] ====================
   async function fetchAllBookings() {
     try {
-      // 🟢 เติม ?role=admin เข้าไปท้ายท่อ เพื่อล็อกสัญญาณความปลอดภัยแจกชื่อไทยจากหลังบ้านคัป
       const res = await fetch("http://localhost:5000/api/bookings?role=admin");
       if (res.ok) {
         const data = await res.json();
         setBookings(data);
+        setSelectedBookingIds([]);
       }
     } catch (err) {
       console.error("ดึงข้อมูลคิวรวมไม่สำเร็จ:", err);
     }
   }
 
+  // 🟢 ลบทีละ 1 รายการถาวร
+  async function handleDeleteSingleBooking(id) {
+    if (!confirm(`ยืนยันลบประวัติการจองรหัส BOOK-${id}?`)) return;
+    try {
+      const res = await fetch(`http://localhost:5000/api/bookings/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        alert("🗑️ ลบประวัติการจองเรียบร้อยคัป");
+        fetchAllBookings();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  // 🟢 ลบทีละหลายรายการ
+  async function handleDeleteBatchBookings() {
+    if (selectedBookingIds.length === 0) return;
+    if (!confirm(`ยืนยันลบประวัติการจองที่เลือกไว้จำนวน ${selectedBookingIds.length} รายการ?`)) return;
+
+    try {
+      const res = await fetch("http://localhost:5000/api/bookings/delete-batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: selectedBookingIds })
+      });
+      if (res.ok) {
+        alert(`🗑️ ลบประวัติการจองจำนวน ${selectedBookingIds.length} รายการเรียบร้อยคัป!`);
+        fetchAllBookings();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  function toggleSelectAllBookings() {
+    if (selectedBookingIds.length === bookings.length) {
+      setSelectedBookingIds([]);
+    } else {
+      setSelectedBookingIds(bookings.map(b => b.id));
+    }
+  }
+
+  function toggleSelectBooking(id) {
+    if (selectedBookingIds.includes(id)) {
+      setSelectedBookingIds(selectedBookingIds.filter(item => item !== id));
+    } else {
+      setSelectedBookingIds([...selectedBookingIds, id]);
+    }
+  }
+
+  // 🟢 ฟังก์ชั่นแปลงวันที่เปรียบเทียบมาตรฐาน YYYY-MM-DD
+  const getSafeDateStr = (dateInput) => {
+    if (!dateInput) return "";
+    const d = new Date(dateInput);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  const todayStr = getSafeDateStr(new Date());
+
   return (
-    <MainLayout activePage="admin-panel" onNavigate={onNavigate} title="🛠️ ระบบผู้ดูแลระบบ (Admin Panel)" subtitle="บริหารจัดการบัญชีผู้ใช้และคลังยานพาหนะของบริษัท">
+    <MainLayout activePage="admin-panel" onNavigate={onNavigate} title="🛠️ ระบบผู้ดูแลระบบ (Admin Panel)" subtitle="บริหารจัดการบัญชีผู้ใช้ คลังยานพาหนะ และสมุดประวัติการจอง">
       
-      {/* ส่วนควบคุมแถบเมนูหลัก และปุ่มเปิดโมดอล */}
+      {/* เมนูแท็บหลัก */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", marginBottom: "24px", flexWrap: "wrap" }}>
         <div style={{ display: "flex", gap: "12px" }}>
           <button onClick={() => setActiveSubTab("employees")} style={{ padding: "10px 18px", borderRadius: "8px", border: "1px solid #d1d5db", backgroundColor: activeSubTab === "employees" ? "#1e3a8a" : "#fff", color: activeSubTab === "employees" ? "#fff" : "#374151", fontWeight: "600", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}>
@@ -185,7 +252,7 @@ export default function AdminManagement({ onNavigate }) {
         )}
       </div>
 
-      {/* ==================== แท็บที่ 1: ตารางพนักงาน ==================== */}
+      {/* แท็บที่ 1: ตารางพนักงาน */}
       {activeSubTab === "employees" && (
         <div style={{ backgroundColor: "#fff", padding: "20px", borderRadius: "12px", border: "1px solid #e5e7eb", overflowX: "auto" }}>
           <h3 style={{ margin: "0 0 12px 0", color: "#374151" }}>รายชื่อบัญชีผู้ใช้</h3>
@@ -221,7 +288,7 @@ export default function AdminManagement({ onNavigate }) {
         </div>
       )}
 
-      {/* ==================== แท็บที่ 2: ตารางยานพาหนะ ==================== */}
+      {/* แท็บที่ 2: ตารางยานพาหนะ */}
       {activeSubTab === "vehicles" && (
         <div style={{ backgroundColor: "#fff", padding: "20px", borderRadius: "12px", border: "1px solid #e5e7eb", overflowX: "auto" }}>
           <h3 style={{ margin: "0 0 12px 0", color: "#374151" }}>คลังรถยนต์บริษัท</h3>
@@ -278,7 +345,7 @@ export default function AdminManagement({ onNavigate }) {
                           }
                         } catch (err) { console.error(err); }
                       }}
-                      style={{ padding: "4px 8px", borderRadius: "6px", fontSize: "12px", fontWeight: "600", border: "1px solid", borderColor: car.status === "maintenance" ? "#fca5a5" : "#a7f3d0", backgroundColor: car.status === "maintenance" ? "#fef2f2" : "#ecfdf5", color: car.status === "maintenance" ? "#dc2626" : "#065f46", cursor: "pointer", outline: "none", WebkitAppearance: "none", appearance: "none", textAlign: "center" }}
+                      style={{ padding: "4px 8px", borderRadius: "6px", fontSize: "12px", fontWeight: "600", border: "1px solid", borderColor: car.status === "maintenance" ? "#fca5a5" : "#a7f3d0", backgroundColor: car.status === "maintenance" ? "#fef2f2" : "#ecfdf5", color: car.status === "maintenance" ? "#dc2626" : "#065f46", cursor: "pointer", outline: "none" }}
                     >
                       <option value="available">พร้อมใช้งาน</option>
                       <option value="maintenance">🛠️ ชำรุด / งดใช้งาน</option>
@@ -291,53 +358,114 @@ export default function AdminManagement({ onNavigate }) {
         </div>
       )}
 
-      {/* ==================== แท็บที่ 3: ตารางประวัติการจองรถทั้งหมดของทุกคน (Admin) ==================== */}
+      {/* 🚀 แท็บที่ 3: ตารางประวัติการจองรถทั้งหมด (พร้อม Badge สถานะ เขียว-แดง-เทา) */}
       {activeSubTab === "all_bookings" && (
         <div style={{ backgroundColor: "#fff", padding: "20px", borderRadius: "12px", border: "1px solid #e5e7eb", overflowX: "auto" }}>
-          <h3 style={{ margin: "0 0 12px 0", color: "#374151" }}>สมุดประวัติคิวจองรถยนต์ของพนักงานทุกคนในระบบ</h3>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "600px" }}>
+          
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "10px" }}>
+            <h3 style={{ margin: 0, color: "#374151" }}>สมุดประวัติคิวจองรถยนต์ของพนักงานทุกคนในระบบ</h3>
+            
+            {selectedBookingIds.length > 0 && (
+              <button
+                onClick={handleDeleteBatchBookings}
+                style={{ padding: "8px 16px", backgroundColor: "#EF4444", color: "#fff", border: "none", borderRadius: "8px", fontWeight: "700", fontSize: "13px", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
+              >
+                <Trash2 size={15} /> ลบประวัติที่เลือก ({selectedBookingIds.length} รายการ)
+              </button>
+            )}
+          </div>
+
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "750px" }}>
             <thead>
               <tr style={{ backgroundColor: "#f3f4f6", borderBottom: "2px solid #e5e7eb" }}>
+                <th style={{ padding: "10px", textAlign: "center", width: "40px" }}>
+                  <input
+                    type="checkbox"
+                    checked={bookings.length > 0 && selectedBookingIds.length === bookings.length}
+                    onChange={toggleSelectAllBookings}
+                    style={{ cursor: "pointer", width: "16px", height: "16px" }}
+                  />
+                </th>
                 <th style={{ padding: "10px", textAlign: "left", fontSize: "13px" }}>รหัสคิว</th>
                 <th style={{ padding: "10px", textAlign: "left", fontSize: "13px" }}>ชื่อผู้จองใช้งาน</th>
                 <th style={{ padding: "10px", textAlign: "left", fontSize: "13px" }}>ยานพาหนะที่ใช้</th>
                 <th style={{ padding: "10px", textAlign: "center", fontSize: "13px" }}>วันที่เริ่ม</th>
                 <th style={{ padding: "10px", textAlign: "center", fontSize: "13px" }}>วันที่สิ้นสุด</th>
+                {/* 🟢 คอลัมน์สถานะการจอง */}
+                <th style={{ padding: "10px", textAlign: "center", fontSize: "13px" }}>สถานะการจอง</th>
+                <th style={{ padding: "10px", textAlign: "center", fontSize: "13px" }}>จัดการ</th>
               </tr>
             </thead>
             <tbody>
               {bookings.length === 0 ? (
                 <tr>
-                  <td colSpan="5" style={{ padding: "20px", textAlign: "center", color: "#9ca3af", fontSize: "14px" }}>ยังไม่มีประวัติการจองคิว</td>
+                  <td colSpan="8" style={{ padding: "20px", textAlign: "center", color: "#9ca3af", fontSize: "14px" }}>ยังไม่มีประวัติการจองคิวในระบบ</td>
                 </tr>
               ) : (
-                bookings.map(b => (
-                  <tr key={b.id} style={{ borderBottom: "1px solid #f3f4f6", fontSize: "13px" }}>
-                    <td style={{ padding: "12px", fontWeight: "700", color: "#1e3a8a" }}>BOOK-{b.id}</td>
-                   <td style={{ padding: "12px", fontWeight: "600" }}>
-  {(() => {
-    // 💡 ค้นหาชื่อภาษาไทยของพนักงานคนนี้จากอาร์เรย์ employees ที่มีอยู่ในหน้าจออยู่แล้วคัป
-    const matchUser = employees.find(emp => emp.id?.toLowerCase().trim() === b.borrower?.toLowerCase().trim());
-    
-    if (b.borrower?.toLowerCase().trim() === 'admin') {
-      return "ผู้ดูแลระบบสูงสุด";
-    }
-    // 💡 ถ้าเจอชื่อจริงในระบบพนักงานให้เอาชื่อไทยมาโชว์ทันที ถ้าไม่เจอค่อยดึงรหัสอังกฤษมาแก้ขัดคัป
-    return matchUser ? matchUser.name : (b.borrower_real_name || b.borrower);
-  })()}
-</td> 
-                    <td style={{ padding: "12px", color: "#4b5563" }}>{b.vehicle_model}</td>
-                    <td style={{ padding: "12px", textAlign: "center" }}>{new Date(b.start_date).toLocaleDateString('th-TH')}</td>
-                    <td style={{ padding: "12px", textAlign: "center" }}>{new Date(b.end_date).toLocaleDateString('th-TH')}</td>
-                  </tr>
-                ))
+                bookings.map(b => {
+                  const isChecked = selectedBookingIds.includes(b.id);
+                  const endDateStr = getSafeDateStr(b.end_date);
+                  const isCancelled = b.status === 'cancelled';
+                  const isExpired = endDateStr < todayStr;
+
+                  return (
+                    <tr key={b.id} style={{ borderBottom: "1px solid #f3f4f6", fontSize: "13px", backgroundColor: isChecked ? "#FEF2F2" : "transparent" }}>
+                      <td style={{ padding: "12px", textAlign: "center" }}>
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => toggleSelectBooking(b.id)}
+                          style={{ cursor: "pointer", width: "16px", height: "16px" }}
+                        />
+                      </td>
+                      <td style={{ padding: "12px", fontWeight: "700", color: "#1e3a8a" }}>BOOK-{b.id}</td>
+                      <td style={{ padding: "12px", fontWeight: "600" }}>
+                        {(() => {
+                          const matchUser = employees.find(emp => emp.id?.toLowerCase().trim() === b.borrower?.toLowerCase().trim());
+                          if (b.borrower?.toLowerCase().trim() === 'admin') return "ผู้ดูแลระบบสูงสุด";
+                          return matchUser ? matchUser.name : (b.borrower_real_name || b.borrower);
+                        })()}
+                      </td> 
+                      <td style={{ padding: "12px", color: "#4b5563" }}>{b.vehicle_model}</td>
+                      <td style={{ padding: "12px", textAlign: "center" }}>{new Date(b.start_date).toLocaleDateString('th-TH')}</td>
+                      <td style={{ padding: "12px", textAlign: "center" }}>{new Date(b.end_date).toLocaleDateString('th-TH')}</td>
+                      
+                      {/* 🎨 [ป้ายสถานะการจอง - Badge Color] */}
+                      <td style={{ padding: "12px", textAlign: "center" }}>
+                        {isCancelled ? (
+                          <span style={{ fontSize: "11px", padding: "4px 10px", borderRadius: "9999px", backgroundColor: "#FEF2F2", color: "#DC2626", border: "1px solid #FCA5A5", fontWeight: "bold" }}>
+                            ❌ ยกเลิกการจอง
+                          </span>
+                        ) : isExpired ? (
+                          <span style={{ fontSize: "11px", padding: "4px 10px", borderRadius: "9999px", backgroundColor: "#F3F4F6", color: "#4B5563", border: "1px solid #D1D5DB", fontWeight: "bold" }}>
+                            🏁 ครบกำหนดแล้ว
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: "11px", padding: "4px 10px", borderRadius: "9999px", backgroundColor: "#ECFDF5", color: "#047857", border: "1px solid #A7F3D0", fontWeight: "bold" }}>
+                            🟢 กำลังจองอยู่
+                          </span>
+                        )}
+                      </td>
+
+                      <td style={{ padding: "12px", textAlign: "center" }}>
+                        <button
+                          onClick={() => handleDeleteSingleBooking(b.id)}
+                          title="ลบประวัตินี้ออกจากระบบ"
+                          style={{ color: "#EF4444", border: "none", background: "none", cursor: "pointer", padding: "4px" }}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
       )}
 
-      {/* ==================== 📦 [POPUP MODAL]: ฟอร์มพนักงาน ==================== */}
+      {/* POPUP MODAL: ฟอร์มพนักงาน */}
       {isEmpModalOpen && (
         <div className="modal-overlay" style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
           <div className="fg-rise" style={{ backgroundColor: "#fff", padding: "24px", borderRadius: "12px", width: "90%", maxWidth: "500px", boxShadow: "0 10px 25px rgba(0,0,0,0.15)" }}>
@@ -380,7 +508,7 @@ export default function AdminManagement({ onNavigate }) {
         </div>
       )}
 
-      {/* ==================== 📦 [POPUP MODAL]: ฟอร์มรถยนต์ ==================== */}
+      {/* POPUP MODAL: ฟอร์มรถยนต์ */}
       {isCarModalOpen && (
         <div className="modal-overlay" style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
           <div className="fg-rise" style={{ backgroundColor: "#fff", padding: "24px", borderRadius: "12px", width: "90%", maxWidth: "550px", boxShadow: "0 10px 25px rgba(0,0,0,0.15)" }}>

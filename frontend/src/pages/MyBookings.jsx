@@ -1,17 +1,16 @@
 import { useState, useEffect } from "react";
 import MainLayout from "../layouts/MainLayout";
-import { Clock, Calendar, User, KeyRound, Tag, Eye, Trash2, X, ClipboardList, History, Maximize2 } from "lucide-react";
+import { Clock, Calendar, User, KeyRound, Tag, Eye, Trash2, X, ClipboardList, History, Maximize2, AlertCircle } from "lucide-react";
 
 export default function MyBookings({ onNavigate }) {
-  // ดึงชื่อผู้ใช้ภาษาไทยปัจจุบันจาก localStorage
   const [currentUser] = useState(localStorage.getItem("borrowerName") || "ผู้ใช้งาน");  
   const [activeSubTab, setActiveSubTab] = useState("current"); // 'current' | 'history'
   const [myBookings, setMyBookings] = useState([]);
-  const [vehicles, setVehicles] = useState([]); // 🟢 เพิ่มคลังเก็บข้อมูลรถเพื่อเอาไว้ดึงรูปภาพล่าสุดคัป
+  const [vehicles, setVehicles] = useState([]);
   
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [zoomedImage, setZoomedImage] = useState(null); // 🟢 สเตทสำหรับซูมรูปแบบ Full Screen คัป
+  const [zoomedImage, setZoomedImage] = useState(null);
 
   useEffect(() => {
     fetchMyBookings();
@@ -19,7 +18,6 @@ export default function MyBookings({ onNavigate }) {
 
   async function fetchMyBookings() {
     try {
-      // ดึงข้อมูลยานพาหนะทั้งหมดจากหลังบ้านมาก่อนเพื่อเตรียมซิงค์รูปอัปเดตล่าสุด
       const resVehicles = await fetch("http://localhost:5000/api/vehicles");
       let currentVehicles = [];
       if (resVehicles.ok) {
@@ -27,7 +25,6 @@ export default function MyBookings({ onNavigate }) {
         setVehicles(currentVehicles);
       }
 
-      // ดึงรหัสพนักงานภาษาอังกฤษ
       const empId = localStorage.getItem("borrowerEmpId") || currentUser;
       const userRole = localStorage.getItem("userRole") || "employee";
       
@@ -35,7 +32,6 @@ export default function MyBookings({ onNavigate }) {
       if (res.ok) {
         const bookingsData = await res.json();
         
-        // 🟢 [ไม้เด็ดซิงค์รูป]: แมตช์เอา URL รูปภาพแกะกล่องล่าสุดจากตลัง vehicles มาสวมแทนรูปเก่าออโต้คัป
         const updatedBookings = bookingsData.map(b => {
           const matchedCar = currentVehicles.find(c => c.id?.toLowerCase().trim() === (b.vehicle_id || "").toLowerCase().trim());
           return {
@@ -50,16 +46,17 @@ export default function MyBookings({ onNavigate }) {
     }
   }
 
+  // 🟢 ปรับเปลี่ยนเป็นการเรียก Soft Cancel (อัปเดต status = 'cancelled') ประวัติจะไม่หาย!
   async function handleCancelBooking(bookingId, modelName) {
-    if (!confirm(`⚠️ ยืนยันยกเลิกคำขอจองคิวรถ [ ${modelName} ] ใช่หรือไม่?\n(ข้อมูลคิวในปฏิทินจะถูกลบออกทันที)`)) return;
+    if (!confirm(`⚠️ ยืนยันยกเลิกคำขอจองคิวรถ [ ${modelName} ] ใช่หรือไม่?\n(สถานะจะเปลี่ยนเป็นยกเลิก และปลดล็อกคิวในปฏิทินทันที)`)) return;
 
     try {
-      const res = await fetch(`http://localhost:5000/api/bookings/${bookingId}`, {
-        method: "DELETE"
+      const res = await fetch(`http://localhost:5000/api/bookings/${bookingId}/cancel`, {
+        method: "PUT"
       });
 
       if (res.ok) {
-        alert("ยกเลิกสิทธิ์การจองรถยนต์สำเร็จเรียบร้อยแล้ว!");
+        alert("🎯 ยกเลิกสิทธิ์การจองรถยนต์สำเร็จเรียบร้อยแล้ว!");
         fetchMyBookings(); 
       }
     } catch (err) {
@@ -68,7 +65,6 @@ export default function MyBookings({ onNavigate }) {
   }
 
   function handleOpenDetails(booking) {
-    // 🟢 ก่อนเปิดเช็คความมั่นใจ ดึงข้อมูลรูปภาพล่าสุดมาอัปเดตใส่ State คุมโมดอลรายละเอียดคัป
     const matchedCar = vehicles.find(c => c.id?.toLowerCase().trim() === (booking.vehicle_id || "").toLowerCase().trim());
     setSelectedBooking({
       ...booking,
@@ -102,10 +98,19 @@ export default function MyBookings({ onNavigate }) {
     return bookingBorrower === myEmpId;
   });
 
+  // 🚀 ระบบ Auto History: ถ้ายังไม่เลยวัน และ ไม่ได้ยกเลิก ➔ อยู่คิวปัจจุบัน
+  // ถ้าเลยวันจองไปแล้ว (endDateStr < todayStr) หรือกด 'cancelled' ➔ ย้ายเข้าประวัติย้อนหลังออโต้คัป!
   const filteredBookings = totalOwnBookings.filter(booking => {
     if (!booking.end_date) return false;
     const endDateStr = getSafeDateStr(booking.end_date);
-    return activeSubTab === "current" ? endDateStr >= todayStr : endDateStr < todayStr;
+    const isCancelled = booking.status === 'cancelled';
+    const isExpired = endDateStr < todayStr;
+
+    if (activeSubTab === "current") {
+      return !isExpired && !isCancelled; // รายการที่ยังใช้งานได้อยู่
+    } else {
+      return isExpired || isCancelled; // รายการที่หมดอายุ หรือโดนยกเลิก ย้ายมาหมวดประวัติ
+    }
   });
 
   return (
@@ -128,14 +133,14 @@ export default function MyBookings({ onNavigate }) {
           onClick={() => setActiveSubTab("current")} 
           style={{ padding: "8px 16px", borderRadius: "6px", border: "none", backgroundColor: activeSubTab === "current" ? "#1e3a8a" : "transparent", color: activeSubTab === "current" ? "#fff" : "#4b5563", fontWeight: "600", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
         >
-          <ClipboardList size={16} /> รายการจองปัจจุบัน ({totalOwnBookings.filter(b => getSafeDateStr(b.end_date) >= todayStr).length})
+          <ClipboardList size={16} /> รายการจองปัจจุบัน ({totalOwnBookings.filter(b => getSafeDateStr(b.end_date) >= todayStr && b.status !== 'cancelled').length})
         </button>
         <button 
           type="button"
           onClick={() => setActiveSubTab("history")} 
           style={{ padding: "8px 16px", borderRadius: "6px", border: "none", backgroundColor: activeSubTab === "history" ? "#6b7280" : "transparent", color: activeSubTab === "history" ? "#fff" : "#4b5563", fontWeight: "600", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
         >
-          <History size={16} /> ประวัติการจองย้อนหลัง ({totalOwnBookings.filter(b => getSafeDateStr(b.end_date) < todayStr).length})
+          <History size={16} /> ประวัติการจองย้อนหลัง ({totalOwnBookings.filter(b => getSafeDateStr(b.end_date) < todayStr || b.status === 'cancelled').length})
         </button>
       </div>
 
@@ -150,6 +155,18 @@ export default function MyBookings({ onNavigate }) {
               <div style={{ flex: 1, minWidth: "250px" }}>
                 <h4 style={{ margin: "0 0 8px 0", color: "#111827", display: "flex", alignItems: "center", gap: "8px" }}>
                   <Tag size={16} style={{ color: "#D97706" }} /> {booking.vehicle_model}
+                  
+                  {/* แสดง Badge สถานะถ้าเป็นรายการที่ยกเลิก */}
+                  {booking.status === 'cancelled' && (
+                    <span style={{ fontSize: "11px", padding: "2px 8px", backgroundColor: "#FEF2F2", color: "#DC2626", border: "1px solid #FCA5A5", borderRadius: "4px", fontWeight: "bold" }}>
+                      ❌ ยกเลิกการจอง
+                    </span>
+                  )}
+                  {getSafeDateStr(booking.end_date) < todayStr && booking.status !== 'cancelled' && (
+                    <span style={{ fontSize: "11px", padding: "2px 8px", backgroundColor: "#F3F4F6", color: "#4B5563", border: "1px solid #D1D5DB", borderRadius: "4px", fontWeight: "bold" }}>
+                      🏁 เสร็จสิ้นแล้ว
+                    </span>
+                  )}
                 </h4>
                 
                 <div style={{ display: "flex", gap: "24px", fontSize: "13px", color: "#4b5563", flexWrap: "wrap", marginBottom: "6px" }}>
@@ -174,7 +191,7 @@ export default function MyBookings({ onNavigate }) {
                   <Eye size={14} /> รายละเอียด
                 </button>
                 
-                {activeSubTab === "current" && (
+                {activeSubTab === "current" && booking.status !== 'cancelled' && (
                   <button 
                     type="button"
                     onClick={() => handleCancelBooking(booking.id, booking.vehicle_model)}
@@ -183,8 +200,6 @@ export default function MyBookings({ onNavigate }) {
                     <Trash2 size={14} /> ยกเลิกการจอง
                   </button>
                 )}
-
-                
               </div>
             </div>
           ))
@@ -202,7 +217,6 @@ export default function MyBookings({ onNavigate }) {
             <div className="modal-body">
               <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                 
-                {/* 🟢 [กรอบรูปสไตล์ IG ไม่โดนครอปตัด]: บังคับสเกล 16:10 ถมเต็มสวยงาม ไม่ยืด ไม่เบี้ยว และคลิกซูมขยายใหญ่ได้คัป */}
                 <div 
                   onClick={() => setZoomedImage(selectedBooking.image)}
                   title="คลิกส่องดูรูปขนาดใหญ่"
@@ -229,6 +243,9 @@ export default function MyBookings({ onNavigate }) {
                   
                   <p style={{ margin: "6px 0", fontSize: "14px", color: "#4b5563" }}><strong>กำหนดวันเริ่มต้นคิว:</strong> {formatDate(selectedBooking.start_date)}</p>
                   <p style={{ margin: "6px 0", fontSize: "14px", color: "#4b5563" }}><strong>กำหนดวันสิ้นสุดคิว:</strong> {formatDate(selectedBooking.end_date)}</p>
+                  <p style={{ margin: "6px 0", fontSize: "14px", color: "#4b5563" }}>
+                    <strong>สถานะคิว:</strong> {selectedBooking.status === 'cancelled' ? <span style={{ color: "#DC2626", fontWeight: "bold" }}>ยกเลิกการจอง</span> : <span style={{ color: "#059669", fontWeight: "bold" }}>ปกติ / สมบูรณ์</span>}
+                  </p>
                 </div>
               </div>
               <div style={{ marginTop: "24px", display: "flex", justifyContent: "flex-end" }}>
@@ -239,7 +256,7 @@ export default function MyBookings({ onNavigate }) {
         </div>
       )}
 
-      {/* ==================== 🟢 [LIGHTBOX POPUP]: คลิกซูมดูรูปภาพขนาดใหญ่เต็มตาคัป ==================== */}
+      {/* LIGHTBOX POPUP */}
       {zoomedImage && (
         <div 
           onClick={() => setZoomedImage(null)} 
