@@ -129,7 +129,8 @@ app.get('/api/vehicles', async (req, res) => {
 
 app.post('/api/vehicles', upload.single('imageFile'), async (req, res) => {
     const { id, model, plate, seats, status, fuel_type, transmission, type, description } = req.body;
-    let imageUrl = req.file ? `http://localhost:5000/uploads/${req.file.filename}` : '';
+    // 🟢 ใช้ Relative Path เพื่อให้มือถือดึงรูปผ่าน IP เซิร์ฟเวอร์ได้ถูกต้อง
+    let imageUrl = req.file ? `/uploads/${req.file.filename}` : '';
 
     try {
         const connection = await mysql.createConnection(dbConfig);
@@ -151,7 +152,8 @@ app.post('/api/vehicles', upload.single('imageFile'), async (req, res) => {
 app.put('/api/vehicles/:id', upload.single('imageFile'), async (req, res) => {
     const { id } = req.params;
     const { model, plate, seats, image, status } = req.body;
-    let imageUrl = req.file ? `http://localhost:5000/uploads/${req.file.filename}` : image;
+    // 🟢 ใช้ Relative Path
+    let imageUrl = req.file ? `/uploads/${req.file.filename}` : image;
 
     try {
         const connection = await mysql.createConnection(dbConfig);
@@ -174,9 +176,23 @@ app.delete('/api/vehicles/:id', async (req, res) => {
     } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
+// 🟢 อัปเดตข้อมูล พ.ร.บ. รถยนต์
+app.put('/api/vehicles/:id/act', async (req, res) => {
+    const { id } = req.params;
+    const { act_expiry_date, act_number } = req.body;
+    try {
+        const connection = await mysql.createConnection(dbConfig);
+        await connection.execute(
+            'UPDATE vehicles SET act_expiry_date = ?, act_number = ? WHERE id = ?',
+            [act_expiry_date, act_number, id]
+        );
+        await connection.end();
+        res.json({ success: true, message: 'อัปเดตข้อมูล พ.ร.บ. เรียบร้อย' });
+    } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
 // ==================== [ 4. Bookings ] ====================
 
-// 🟢 4.1 ดึงรายการจองคิวรถ
 app.get('/api/bookings', async (req, res) => {
     const borrowerName = req.query.borrower || '';
     const userRole = req.query.role || '';
@@ -206,7 +222,6 @@ app.get('/api/bookings', async (req, res) => {
             );
             rows = allRows;
         } else {
-            // สำหรับปฏิทินแสดงเฉพาะรายการที่ยังไม่ยกเลิก
             const [myRows] = await connection.execute(
                 `SELECT b.*, u.name AS borrower_real_name 
                  FROM bookings b
@@ -222,7 +237,6 @@ app.get('/api/bookings', async (req, res) => {
     } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-// 🟢 4.2 บันทึกการจองใหม่ (POST)
 app.post('/api/bookings', async (req, res) => {
     const vehicle_id = req.body.vehicle_id || req.body.vehicleId || req.body.carId || '';
     const borrower = req.body.borrower || req.body.user || req.body.username || '';
@@ -246,7 +260,6 @@ app.post('/api/bookings', async (req, res) => {
     } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-// 🟢 4.3 อัปเดตสถานะยกเลิกการจอง (Soft Cancel) - ประวัติจะไม่หาย
 app.put('/api/bookings/:id/cancel', async (req, res) => {
     const { id } = req.params;
     try {
@@ -257,7 +270,6 @@ app.put('/api/bookings/:id/cancel', async (req, res) => {
     } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-// 🟢 4.4 ลบรายการจองแบบกลุ่ม (Batch Delete)
 app.post('/api/bookings/delete-batch', async (req, res) => {
     const { ids } = req.body;
     if (!ids || !Array.isArray(ids) || ids.length === 0) {
@@ -273,7 +285,6 @@ app.post('/api/bookings/delete-batch', async (req, res) => {
     } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-// 🟢 4.5 ลบรายการจองทีละอันถาวร (Hard Delete)
 app.delete('/api/bookings/:id', async (req, res) => {
     const { id } = req.params;
     try {
@@ -284,19 +295,5 @@ app.delete('/api/bookings/:id', async (req, res) => {
     } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-app.listen(5000, () => console.log('🚀 API CRUD Server รันเรียบร้อยที่พอร์ต 5000'));
-
-// 🟢 อัปเดตข้อมูล พ.ร.บ. รถยนต์
-app.put('/api/vehicles/:id/act', async (req, res) => {
-    const { id } = req.params;
-    const { act_expiry_date, act_number } = req.body;
-    try {
-        const connection = await mysql.createConnection(dbConfig);
-        await connection.execute(
-            'UPDATE vehicles SET act_expiry_date = ?, act_number = ? WHERE id = ?',
-            [act_expiry_date, act_number, id]
-        );
-        await connection.end();
-        res.json({ success: true, message: 'อัปเดตข้อมูล พ.ร.บ. เรียบร้อย' });
-    } catch (error) { res.status(500).json({ error: error.message }); }
-});
+// 🟢 เพิ่ม '0.0.0.0' เพื่อเปิดให้ iPad/มือถือ ต่อเข้าพอร์ต 5000 ได้
+app.listen(5000, '0.0.0.0', () => console.log('🚀 API CRUD Server รันเรียบร้อยที่พอร์ต 5000 (เปิดรับทุก IP)'));
