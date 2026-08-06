@@ -21,6 +21,7 @@ export default function MainLayout({
           subtitle={subtitle}
           onNewBooking={onNewBooking}
           onViewHistory={onViewHistory}
+          onNavigate={onNavigate}  
         />
         <main className="app-main">{children}</main>
       </div>

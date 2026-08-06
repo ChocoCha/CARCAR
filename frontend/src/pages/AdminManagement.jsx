@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import MainLayout from "../layouts/MainLayout";
-import { User, Car, Plus, Trash2, Edit3, X, Upload, Layers, CheckSquare, Square } from "lucide-react";
+import { User, Car, Plus, Trash2, Edit3, X, Upload, Layers } from "lucide-react";
+import "../styles/admin.css";
 
 export default function AdminManagement({ onNavigate }) {
   const [activeSubTab, setActiveSubTab] = useState("employees"); 
@@ -8,10 +9,10 @@ export default function AdminManagement({ onNavigate }) {
   const [vehicles, setVehicles] = useState([]);
   const [bookings, setBookings] = useState([]);
 
-  // State สำหรับคุมการติ๊กเลือก Checkbox หลายรายการ
+  // State ติ๊กเลือก Checkbox รายการจอง
   const [selectedBookingIds, setSelectedBookingIds] = useState([]);
 
-  // คุมการเปิด-ปิด ป๊อปอัป (Modal UI Control)
+  // UI Control Modals
   const [isEmpModalOpen, setIsEmpModalOpen] = useState(false);
   const [isCarModalOpen, setIsCarModalOpen] = useState(false);
 
@@ -19,8 +20,17 @@ export default function AdminManagement({ onNavigate }) {
   const [empForm, setEmpForm] = useState({ id: "", name: "", dept: "", password: "1234", role: "employee" });
   const [editingEmpId, setEditingEmpId] = useState(null);
 
-  // State ฟอร์มรถยนต์
-  const [carForm, setCarForm] = useState({ id: "", model: "", plate: "", seats: 4, image: "", status: "available" });
+  // 🟢 State ฟอร์มรถยนต์ (เพิ่ม act_number และ act_expiry_date)
+  const [carForm, setCarForm] = useState({ 
+    id: "", 
+    model: "", 
+    plate: "", 
+    seats: 4, 
+    image: "", 
+    status: "available",
+    act_number: "",
+    act_expiry_date: ""
+  });
   const [selectedFile, setSelectedFile] = useState(null); 
   const [editingCarId, setEditingCarId] = useState(null);
 
@@ -39,8 +49,10 @@ export default function AdminManagement({ onNavigate }) {
 
   // ==================== [ API: พนักงาน ] ====================
   async function fetchEmployees() {
-    const res = await fetch("http://localhost:5000/api/employees");
-    if (res.ok) setEmployees(await res.json());
+    try {
+      const res = await fetch("http://localhost:5000/api/employees");
+      if (res.ok) setEmployees(await res.json());
+    } catch (err) { console.error(err); }
   }
 
   async function handleSaveEmployee(e) {
@@ -88,8 +100,10 @@ export default function AdminManagement({ onNavigate }) {
 
   // ==================== [ API: ยานพาหนะ ] ====================
   async function fetchVehicles() {
-    const res = await fetch("http://localhost:5000/api/vehicles");
-    if (res.ok) setVehicles(await res.json());
+    try {
+      const res = await fetch("http://localhost:5000/api/vehicles");
+      if (res.ok) setVehicles(await res.json());
+    } catch (err) { console.error(err); }
   }
 
   async function handleSaveVehicle(e) {
@@ -105,23 +119,23 @@ export default function AdminManagement({ onNavigate }) {
     formData.append("seats", carForm.seats);
     formData.append("status", carForm.status);
     formData.append("image", carForm.image); 
+    // 🟢 ส่งค่า พ.ร.บ. ไปยัง backend
+    formData.append("act_number", carForm.act_number);
+    formData.append("act_expiry_date", carForm.act_expiry_date);
     
     if (selectedFile) {
       formData.append("imageFile", selectedFile);
     }
 
-    const res = await fetch(url, {
-      method,
-      body: formData 
-    });
+    const res = await fetch(url, { method, body: formData });
 
     if (res.ok) {
-      alert(isEdit ? "🎯 แก้ไขสเปครถสำเร็จ!" : "✨ ลงทะเบียนยานพาหนะสำเร็จ!");
+      alert(isEdit ? "🎯 แก้ไขสเปครถและข้อมูล พ.ร.บ. สำเร็จ!" : "✨ ลงทะเบียนยานพาหนะสำเร็จ!");
       closeCarModal();
       fetchVehicles();
     } else {
       const errData = await res.json();
-      alert(errData.message || "เกิดข้อผิดพลาดในการบันทึกไฟล์");
+      alert(errData.message || "เกิดข้อผิดพลาดในการบันทึกข้อมูล");
     }
   }
 
@@ -131,9 +145,40 @@ export default function AdminManagement({ onNavigate }) {
     if (res.ok) { fetchVehicles(); alert("ลบสำเร็จ"); }
   }
 
+  async function handleStatusChange(car, nextStatus) {
+    try {
+      const res = await fetch(`http://localhost:5000/api/vehicles/${car.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: car.model,
+          plate: car.plate,
+          seats: car.seats,
+          image: car.image,
+          status: nextStatus,
+          act_number: car.act_number,
+          act_expiry_date: car.act_expiry_date
+        })
+      });
+      if (res.ok) {
+        alert(`🎯 สลับสถานะรถรหัส ${car.id.toUpperCase()} เรียบร้อย!`);
+        fetchVehicles(); 
+      }
+    } catch (err) { console.error(err); }
+  }
+
   function startEditCar(car) {
     setEditingCarId(car.id);
-    setCarForm({ id: car.id, model: car.model, plate: car.plate, seats: car.seats, image: car.image || "", status: car.status || "available" });
+    setCarForm({ 
+      id: car.id, 
+      model: car.model, 
+      plate: car.plate, 
+      seats: car.seats, 
+      image: car.image || "", 
+      status: car.status || "available",
+      act_number: car.act_number || "",
+      act_expiry_date: car.act_expiry_date ? car.act_expiry_date.split("T")[0] : ""
+    });
     setSelectedFile(null);
     setIsCarModalOpen(true);
   }
@@ -141,13 +186,11 @@ export default function AdminManagement({ onNavigate }) {
   function closeCarModal() {
     setIsCarModalOpen(false);
     setEditingCarId(null);
-    setCarForm({ id: "", model: "", plate: "", seats: 4, image: "", status: "available" });
+    setCarForm({ id: "", model: "", plate: "", seats: 4, image: "", status: "available", act_number: "", act_expiry_date: "" });
     setSelectedFile(null);
-    const fileInput = document.getElementById("carImageFileInput");
-    if(fileInput) fileInput.value = "";
   }
 
-  // ==================== [ API: ประวัติการจอง & ฟังก์ชั่นลบรายการ ] ====================
+  // ==================== [ API: ประวัติการจอง & การลบ ] ====================
   async function fetchAllBookings() {
     try {
       const res = await fetch("http://localhost:5000/api/bookings?role=admin");
@@ -161,21 +204,17 @@ export default function AdminManagement({ onNavigate }) {
     }
   }
 
-  // 🟢 ลบทีละ 1 รายการถาวร
   async function handleDeleteSingleBooking(id) {
     if (!confirm(`ยืนยันลบประวัติการจองรหัส BOOK-${id}?`)) return;
     try {
       const res = await fetch(`http://localhost:5000/api/bookings/${id}`, { method: "DELETE" });
       if (res.ok) {
-        alert("🗑️ ลบประวัติการจองเรียบร้อยคัป");
+        alert("🗑️ ลบประวัติการจองเรียบร้อยแล้ว");
         fetchAllBookings();
       }
-    } catch (err) {
-      console.error(err);
-    }
+    } catch (err) { console.error(err); }
   }
 
-  // 🟢 ลบทีละหลายรายการ
   async function handleDeleteBatchBookings() {
     if (selectedBookingIds.length === 0) return;
     if (!confirm(`ยืนยันลบประวัติการจองที่เลือกไว้จำนวน ${selectedBookingIds.length} รายการ?`)) return;
@@ -187,12 +226,10 @@ export default function AdminManagement({ onNavigate }) {
         body: JSON.stringify({ ids: selectedBookingIds })
       });
       if (res.ok) {
-        alert(`🗑️ ลบประวัติการจองจำนวน ${selectedBookingIds.length} รายการเรียบร้อยคัป!`);
+        alert(`🗑️ ลบประวัติการจองจำนวน ${selectedBookingIds.length} รายการเรียบร้อยแล้ว!`);
         fetchAllBookings();
       }
-    } catch (err) {
-      console.error(err);
-    }
+    } catch (err) { console.error(err); }
   }
 
   function toggleSelectAllBookings() {
@@ -211,7 +248,6 @@ export default function AdminManagement({ onNavigate }) {
     }
   }
 
-  // 🟢 ฟังก์ชั่นแปลงวันที่เปรียบเทียบมาตรฐาน YYYY-MM-DD
   const getSafeDateStr = (dateInput) => {
     if (!dateInput) return "";
     const d = new Date(dateInput);
@@ -226,60 +262,62 @@ export default function AdminManagement({ onNavigate }) {
   return (
     <MainLayout activePage="admin-panel" onNavigate={onNavigate} title="🛠️ ระบบผู้ดูแลระบบ (Admin Panel)" subtitle="บริหารจัดการบัญชีผู้ใช้ คลังยานพาหนะ และสมุดประวัติการจอง">
       
-      {/* เมนูแท็บหลัก */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", marginBottom: "24px", flexWrap: "wrap" }}>
-        <div style={{ display: "flex", gap: "12px" }}>
-          <button onClick={() => setActiveSubTab("employees")} style={{ padding: "10px 18px", borderRadius: "8px", border: "1px solid #d1d5db", backgroundColor: activeSubTab === "employees" ? "#1e3a8a" : "#fff", color: activeSubTab === "employees" ? "#fff" : "#374151", fontWeight: "600", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}>
+      {/* 🟢 ส่วนแถบแท็บและปุ่มเพิ่ม */}
+      <div className="admin-tab-container">
+        <div className="admin-tabs">
+          <button onClick={() => setActiveSubTab("employees")} className={`admin-tab-btn ${activeSubTab === "employees" ? "is-active" : ""}`}>
             <User size={16} /> จัดการบัญชีพนักงาน
           </button>
-          <button onClick={() => setActiveSubTab("vehicles")} style={{ padding: "10px 18px", borderRadius: "8px", border: "1px solid #d1d5db", backgroundColor: activeSubTab === "vehicles" ? "#1e3a8a" : "#fff", color: activeSubTab === "vehicles" ? "#fff" : "#374151", fontWeight: "600", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}>
+          <button onClick={() => setActiveSubTab("vehicles")} className={`admin-tab-btn ${activeSubTab === "vehicles" ? "is-active" : ""}`}>
             <Car size={16} /> จัดการคลังยานพาหนะ
           </button>
-          <button onClick={() => setActiveSubTab("all_bookings")} style={{ padding: "10px 18px", borderRadius: "8px", border: "1px solid #d1d5db", backgroundColor: activeSubTab === "all_bookings" ? "#1e3a8a" : "#fff", color: activeSubTab === "all_bookings" ? "#fff" : "#374151", fontWeight: "600", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}>
+          <button onClick={() => setActiveSubTab("all_bookings")} className={`admin-tab-btn ${activeSubTab === "all_bookings" ? "is-active" : ""}`}>
             <Layers size={16} /> ตรวจสอบประวัติจองรถทั้งหมด
           </button>
         </div>
 
         {activeSubTab === "employees" && (
-          <button onClick={() => setIsEmpModalOpen(true)} style={{ padding: "10px 20px", backgroundColor: "#10B981", color: "#fff", border: "none", borderRadius: "8px", fontWeight: "700", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}>
+          <button onClick={() => setIsEmpModalOpen(true)} className="admin-add-btn btn-emp">
             <Plus size={16} /> เพิ่มบัญชีพนักงานใหม่
           </button>
         )}
         {activeSubTab === "vehicles" && (
-          <button onClick={() => setIsCarModalOpen(true)} style={{ padding: "10px 20px", backgroundColor: "#F59E0B", color: "#fff", border: "none", borderRadius: "8px", fontWeight: "700", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}>
+          <button onClick={() => setIsCarModalOpen(true)} className="admin-add-btn btn-car">
             <Plus size={16} /> ลงทะเบียนรถใหม่
           </button>
         )}
       </div>
 
-      {/* แท็บที่ 1: ตารางพนักงาน */}
+      {/* 🟢 แท็บที่ 1: ตารางพนักงาน */}
       {activeSubTab === "employees" && (
-        <div style={{ backgroundColor: "#fff", padding: "20px", borderRadius: "12px", border: "1px solid #e5e7eb", overflowX: "auto" }}>
+        <div className="admin-table">
           <h3 style={{ margin: "0 0 12px 0", color: "#374151" }}>รายชื่อบัญชีผู้ใช้</h3>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "500px" }}>
+          <table className="emp-table">
             <thead>
-              <tr style={{ backgroundColor: "#f3f4f6", borderBottom: "2px solid #e5e7eb" }}>
-                <th style={{ padding: "10px", textAlign: "left", fontSize: "13px" }}>ID / Username</th>
-                <th style={{ padding: "10px", textAlign: "left", fontSize: "13px" }}>ชื่อ-นามสกุล</th>
-                <th style={{ padding: "10px", textAlign: "left", fontSize: "13px" }}>แผนก</th>
-                <th style={{ padding: "10px", textAlign: "center", fontSize: "13px" }}>ตำแหน่งสิทธิ์ (Role)</th>
-                <th style={{ padding: "10px", textAlign: "center", fontSize: "13px" }}>จัดการ</th>
+              <tr>
+                <th style={{ textAlign: "left" }}>ID</th>
+                <th style={{ textAlign: "left" }}>ชื่อ-นามสกุล</th>
+                <th style={{ textAlign: "left" }}>แผนก</th>
+                <th style={{ textAlign: "center" }}>สิทธิ์</th>
+                <th style={{ textAlign: "center" }}>จัดการ</th>
               </tr>
             </thead>
             <tbody>
               {employees.map(emp => (
-                <tr key={emp.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
-                  <td style={{ padding: "10px", fontSize: "13px", fontWeight: "600" }}>{emp.id}</td>
-                  <td style={{ padding: "10px", fontSize: "13px" }}>{emp.name}</td>
-                  <td style={{ padding: "10px", fontSize: "13px", color: "#4b5563" }}>{emp.dept}</td>
-                  <td style={{ padding: "10px", textAlign: "center" }}>
-                    <span style={{ fontSize: "11px", padding: "4px 10px", borderRadius: "9999px", backgroundColor: emp.role === "admin" ? "#FEF3C7" : "#E0F2FE", color: emp.role === "admin" ? "#92400E" : "#0369A1", fontWeight: "bold" }}>
+                <tr key={emp.id}>
+                  <td style={{ fontWeight: "600" }}>{emp.id}</td>
+                  <td>{emp.name}</td>
+                  <td style={{ color: "#4b5563" }}>{emp.dept}</td>
+                  <td style={{ textAlign: "center" }}>
+                    <span className="emp-role-badge" style={{ fontSize: "11px", padding: "3px 8px", borderRadius: "999px", backgroundColor: emp.role === "admin" ? "#FEF3C7" : "#E0F2FE", color: emp.role === "admin" ? "#92400E" : "#0369A1", fontWeight: "bold" }}>
                       {emp.role}
                     </span>
                   </td>
-                  <td style={{ padding: "10px", textAlign: "center" }}>
-                    <button onClick={() => startEditEmp(emp)} style={{ marginRight: "8px", color: "#2563EB", border: "none", background: "none", cursor: "pointer" }}><Edit3 size={15} /></button>
-                    <button onClick={() => handleDeleteEmployee(emp.id)} style={{ color: "#EF4444", border: "none", background: "none", cursor: "pointer" }}><Trash2 size={15} /></button>
+                  <td>
+                    <div className="action-cell">
+                      <button onClick={() => startEditEmp(emp)} className="action-btn btn-edit" title="แก้ไข"><Edit3 size={15} /></button>
+                      <button onClick={() => handleDeleteEmployee(emp.id)} className="action-btn btn-delete" title="ลบ"><Trash2 size={15} /></button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -288,68 +326,50 @@ export default function AdminManagement({ onNavigate }) {
         </div>
       )}
 
-      {/* แท็บที่ 2: ตารางยานพาหนะ */}
+      {/* 🟢 แท็บที่ 2: ตารางยานพาหนะ */}
       {activeSubTab === "vehicles" && (
-        <div style={{ backgroundColor: "#fff", padding: "20px", borderRadius: "12px", border: "1px solid #e5e7eb", overflowX: "auto" }}>
+        <div className="admin-table">
           <h3 style={{ margin: "0 0 12px 0", color: "#374151" }}>คลังรถยนต์บริษัท</h3>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "600px" }}>
+          <table className="vehicle-table">
             <thead>
-              <tr style={{ backgroundColor: "#f3f4f6", borderBottom: "2px solid #e5e7eb" }}>
-                <th style={{ padding: "10px", textAlign: "left", fontSize: "13px" }}>รูป</th>
-                <th style={{ padding: "10px", textAlign: "left", fontSize: "13px" }}>ID รถ</th>
-                <th style={{ padding: "10px", textAlign: "left", fontSize: "13px" }}>รุ่นยานพาหนะ</th>
-                <th style={{ padding: "10px", textAlign: "left", fontSize: "13px" }}>ป้ายทะเบียน</th>
-                <th style={{ padding: "10px", textAlign: "center", fontSize: "13px" }}>ที่นั่ง</th>
-                <th style={{ padding: "10px", textAlign: "center", fontSize: "13px" }}>จัดการ</th>
-                <th style={{ padding: "10px", textAlign: "center", fontSize: "13px" }}>สถานะ</th> 
+              <tr>
+                <th style={{ textAlign: "left" }}>รูป</th>
+                <th style={{ textAlign: "left" }}>รุ่นรถ / ทะเบียน</th>
+                <th style={{ textAlign: "center" }}>ที่นั่ง</th>
+                <th style={{ textAlign: "center" }}>สถานะ</th>
+                <th style={{ textAlign: "center" }}>จัดการ</th>
               </tr>
             </thead>
             <tbody>
               {vehicles.map(car => (
-                <tr key={car.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
-                  <td style={{ padding: "10px" }}>
+                <tr key={car.id}>
+                  <td>
                     {car.image ? (
-                      <img src={car.image} alt={car.model} style={{ width: "50px", height: "35px", objectFit: "cover", borderRadius: "4px", border: "1px solid #e5e7eb" }} />
+                      <img src={car.image} alt={car.model} className="vehicle-img" />
                     ) : (
-                      <div style={{ width: "50px", height: "35px", backgroundColor: "#f3f4f6", borderRadius: "4px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "9px", color: "#9ca3af" }}>ไม่มีรูป</div>
+                      <div className="vehicle-img-placeholder">ไม่มีรูป</div>
                     )}
                   </td>
-                  <td style={{ padding: "10px", fontSize: "13px", fontWeight: "700", color: "#D97706" }}>{car.id.toUpperCase()}</td>
-                  <td style={{ padding: "10px", fontSize: "13px", fontWeight: "600" }}>{car.model}</td>
-                  <td style={{ padding: "10px", fontSize: "13px" }}>{car.plate}</td>
-                  <td style={{ padding: "10px", textAlign: "center", fontSize: "13px" }}>{car.seats} ที่นั่ง</td>
-                  <td style={{ padding: "10px", textAlign: "center" }}>
-                    <button onClick={() => startEditCar(car)} style={{ marginRight: "8px", color: "#2563EB", border: "none", background: "none", cursor: "pointer" }}><Edit3 size={15} /></button>
-                    <button onClick={() => handleDeleteVehicle(car.id)} style={{ color: "#EF4444", border: "none", background: "none", cursor: "pointer" }}><Trash2 size={15} /></button>
+                  <td>
+                    <div style={{ fontWeight: "700", color: "#111827", fontSize: "13px" }}>{car.model}</div>
+                    <div style={{ fontSize: "11px", color: "#6b7280" }}>{car.plate} ({car.id.toUpperCase()})</div>
                   </td>
-                  <td style={{ padding: "10px", textAlign: "center" }}>
+                  <td style={{ textAlign: "center" }}>{car.seats}</td>
+                  <td style={{ textAlign: "center" }}>
                     <select
                       value={car.status || "available"}
-                      onChange={async (e) => {
-                        const nextStatus = e.target.value;
-                        try {
-                          const res = await fetch(`http://localhost:5000/api/vehicles/${car.id}`, {
-                            method: "PUT",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                              model: car.model,
-                              plate: car.plate,
-                              seats: car.seats,
-                              image: car.image,
-                              status: nextStatus 
-                            })
-                          });
-                          if (res.ok) {
-                            alert(`🎯 สลับสถานะรถรหัส ${car.id.toUpperCase()} เป็น [ ${nextStatus === 'available' ? 'พร้อมใช้งาน' : 'งดใช้งาน'} ] เรียบร้อย!`);
-                            fetchVehicles(); 
-                          }
-                        } catch (err) { console.error(err); }
-                      }}
-                      style={{ padding: "4px 8px", borderRadius: "6px", fontSize: "12px", fontWeight: "600", border: "1px solid", borderColor: car.status === "maintenance" ? "#fca5a5" : "#a7f3d0", backgroundColor: car.status === "maintenance" ? "#fef2f2" : "#ecfdf5", color: car.status === "maintenance" ? "#dc2626" : "#065f46", cursor: "pointer", outline: "none" }}
+                      onChange={(e) => handleStatusChange(car, e.target.value)}
+                      style={{ padding: "4px 6px", borderRadius: "6px", fontSize: "11px", fontWeight: "600", border: "1px solid", borderColor: car.status === "maintenance" ? "#fca5a5" : "#a7f3d0", backgroundColor: car.status === "maintenance" ? "#fef2f2" : "#ecfdf5", color: car.status === "maintenance" ? "#dc2626" : "#065f46" }}
                     >
-                      <option value="available">พร้อมใช้งาน</option>
-                      <option value="maintenance">🛠️ ชำรุด / งดใช้งาน</option>
+                      <option value="available">พร้อม</option>
+                      <option value="maintenance">🛠️ ชำรุด</option>
                     </select>
+                  </td>
+                  <td>
+                    <div className="action-cell">
+                      <button onClick={() => startEditCar(car)} className="action-btn btn-edit"><Edit3 size={15} /></button>
+                      <button onClick={() => handleDeleteVehicle(car.id)} className="action-btn btn-delete"><Trash2 size={15} /></button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -358,48 +378,43 @@ export default function AdminManagement({ onNavigate }) {
         </div>
       )}
 
-      {/* 🚀 แท็บที่ 3: ตารางประวัติการจองรถทั้งหมด (พร้อม Badge สถานะ เขียว-แดง-เทา) */}
+      {/* 🟢 แท็บที่ 3: สมุดประวัติคิวจองรถยนต์ทั้งหมด */}
       {activeSubTab === "all_bookings" && (
-        <div style={{ backgroundColor: "#fff", padding: "20px", borderRadius: "12px", border: "1px solid #e5e7eb", overflowX: "auto" }}>
-          
+        <div className="admin-table">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "10px" }}>
-            <h3 style={{ margin: 0, color: "#374151" }}>สมุดประวัติคิวจองรถยนต์ของพนักงานทุกคนในระบบ</h3>
+            <h3 style={{ margin: 0, color: "#374151" }}>สมุดประวัติคิวจองรถยนต์</h3>
             
             {selectedBookingIds.length > 0 && (
               <button
                 onClick={handleDeleteBatchBookings}
-                style={{ padding: "8px 16px", backgroundColor: "#EF4444", color: "#fff", border: "none", borderRadius: "8px", fontWeight: "700", fontSize: "13px", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
+                style={{ padding: "8px 16px", backgroundColor: "#EF4444", color: "#fff", border: "none", borderRadius: "8px", fontWeight: "700", fontSize: "12px", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
               >
-                <Trash2 size={15} /> ลบประวัติที่เลือก ({selectedBookingIds.length} รายการ)
+                <Trash2 size={14} /> ลบที่เลือก ({selectedBookingIds.length})
               </button>
             )}
           </div>
 
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "750px" }}>
+          <table className="booking-table">
             <thead>
-              <tr style={{ backgroundColor: "#f3f4f6", borderBottom: "2px solid #e5e7eb" }}>
-                <th style={{ padding: "10px", textAlign: "center", width: "40px" }}>
+              <tr>
+                <th style={{ textAlign: "center", width: "30px" }}>
                   <input
                     type="checkbox"
                     checked={bookings.length > 0 && selectedBookingIds.length === bookings.length}
                     onChange={toggleSelectAllBookings}
-                    style={{ cursor: "pointer", width: "16px", height: "16px" }}
+                    style={{ cursor: "pointer", width: "15px", height: "15px" }}
                   />
                 </th>
-                <th style={{ padding: "10px", textAlign: "left", fontSize: "13px" }}>รหัสคิว</th>
-                <th style={{ padding: "10px", textAlign: "left", fontSize: "13px" }}>ชื่อผู้จองใช้งาน</th>
-                <th style={{ padding: "10px", textAlign: "left", fontSize: "13px" }}>ยานพาหนะที่ใช้</th>
-                <th style={{ padding: "10px", textAlign: "center", fontSize: "13px" }}>วันที่เริ่ม</th>
-                <th style={{ padding: "10px", textAlign: "center", fontSize: "13px" }}>วันที่สิ้นสุด</th>
-                {/* 🟢 คอลัมน์สถานะการจอง */}
-                <th style={{ padding: "10px", textAlign: "center", fontSize: "13px" }}>สถานะการจอง</th>
-                <th style={{ padding: "10px", textAlign: "center", fontSize: "13px" }}>จัดการ</th>
+                <th style={{ textAlign: "left" }}>ข้อมูลการจอง</th>
+                <th style={{ textAlign: "center" }}>ช่วงวันที่</th>
+                <th style={{ textAlign: "center" }}>สถานะ</th>
+                <th style={{ textAlign: "center" }}>จัดการ</th>
               </tr>
             </thead>
             <tbody>
               {bookings.length === 0 ? (
                 <tr>
-                  <td colSpan="8" style={{ padding: "20px", textAlign: "center", color: "#9ca3af", fontSize: "14px" }}>ยังไม่มีประวัติการจองคิวในระบบ</td>
+                  <td colSpan="5" style={{ padding: "20px", textAlign: "center", color: "#9ca3af" }}>ยังไม่มีประวัติการจองคิวในระบบ</td>
                 </tr>
               ) : (
                 bookings.map(b => {
@@ -409,52 +424,58 @@ export default function AdminManagement({ onNavigate }) {
                   const isExpired = endDateStr < todayStr;
 
                   return (
-                    <tr key={b.id} style={{ borderBottom: "1px solid #f3f4f6", fontSize: "13px", backgroundColor: isChecked ? "#FEF2F2" : "transparent" }}>
-                      <td style={{ padding: "12px", textAlign: "center" }}>
+                    <tr key={b.id} style={{ backgroundColor: isChecked ? "#FEF2F2" : "transparent" }}>
+                      <td style={{ textAlign: "center" }}>
                         <input
                           type="checkbox"
                           checked={isChecked}
                           onChange={() => toggleSelectBooking(b.id)}
-                          style={{ cursor: "pointer", width: "16px", height: "16px" }}
+                          style={{ cursor: "pointer", width: "15px", height: "15px" }}
                         />
                       </td>
-                      <td style={{ padding: "12px", fontWeight: "700", color: "#1e3a8a" }}>BOOK-{b.id}</td>
-                      <td style={{ padding: "12px", fontWeight: "600" }}>
-                        {(() => {
-                          const matchUser = employees.find(emp => emp.id?.toLowerCase().trim() === b.borrower?.toLowerCase().trim());
-                          if (b.borrower?.toLowerCase().trim() === 'admin') return "ผู้ดูแลระบบสูงสุด";
-                          return matchUser ? matchUser.name : (b.borrower_real_name || b.borrower);
-                        })()}
-                      </td> 
-                      <td style={{ padding: "12px", color: "#4b5563" }}>{b.vehicle_model}</td>
-                      <td style={{ padding: "12px", textAlign: "center" }}>{new Date(b.start_date).toLocaleDateString('th-TH')}</td>
-                      <td style={{ padding: "12px", textAlign: "center" }}>{new Date(b.end_date).toLocaleDateString('th-TH')}</td>
+                      <td>
+                        <div style={{ fontWeight: "700", color: "#1e3a8a", fontSize: "12px" }}>BOOK-{b.id}</div>
+                        <div style={{ fontWeight: "600", fontSize: "13px", color: "#111827" }}>
+                          {(() => {
+                            const matchUser = employees.find(emp => emp.id?.toLowerCase().trim() === b.borrower?.toLowerCase().trim());
+                            if (b.borrower?.toLowerCase().trim() === 'admin') return "ผู้ดูแลระบบสูงสุด";
+                            return matchUser ? matchUser.name : (b.borrower_real_name || b.borrower);
+                          })()}
+                        </div>
+                        <div style={{ fontSize: "11px", color: "#6b7280" }}>{b.vehicle_model}</div>
+                      </td>
+                      <td style={{ textAlign: "center", fontSize: "11px", color: "#374151" }}>
+                        <div>{new Date(b.start_date).toLocaleDateString('th-TH')}</div>
+                        <div style={{ color: "#9ca3af" }}>ถึง</div>
+                        <div>{new Date(b.end_date).toLocaleDateString('th-TH')}</div>
+                      </td>
                       
-                      {/* 🎨 [ป้ายสถานะการจอง - Badge Color] */}
-                      <td style={{ padding: "12px", textAlign: "center" }}>
+                      <td style={{ textAlign: "center" }}>
                         {isCancelled ? (
-                          <span style={{ fontSize: "11px", padding: "4px 10px", borderRadius: "9999px", backgroundColor: "#FEF2F2", color: "#DC2626", border: "1px solid #FCA5A5", fontWeight: "bold" }}>
-                            ❌ ยกเลิกการจอง
+                          <span style={{ fontSize: "10px", padding: "3px 6px", borderRadius: "999px", backgroundColor: "#FEF2F2", color: "#DC2626", border: "1px solid #FCA5A5", fontWeight: "bold" }}>
+                            ❌ ยกเลิก
                           </span>
                         ) : isExpired ? (
-                          <span style={{ fontSize: "11px", padding: "4px 10px", borderRadius: "9999px", backgroundColor: "#F3F4F6", color: "#4B5563", border: "1px solid #D1D5DB", fontWeight: "bold" }}>
-                            🏁 ครบกำหนดแล้ว
+                          <span style={{ fontSize: "10px", padding: "3px 6px", borderRadius: "999px", backgroundColor: "#F3F4F6", color: "#4B5563", border: "1px solid #D1D5DB", fontWeight: "bold" }}>
+                            🏁 ครบกำหนด
                           </span>
                         ) : (
-                          <span style={{ fontSize: "11px", padding: "4px 10px", borderRadius: "9999px", backgroundColor: "#ECFDF5", color: "#047857", border: "1px solid #A7F3D0", fontWeight: "bold" }}>
-                            🟢 กำลังจองอยู่
+                          <span style={{ fontSize: "10px", padding: "3px 6px", borderRadius: "999px", backgroundColor: "#ECFDF5", color: "#047857", border: "1px solid #A7F3D0", fontWeight: "bold" }}>
+                            🟢 ปกติ
                           </span>
                         )}
                       </td>
 
-                      <td style={{ padding: "12px", textAlign: "center" }}>
-                        <button
-                          onClick={() => handleDeleteSingleBooking(b.id)}
-                          title="ลบประวัตินี้ออกจากระบบ"
-                          style={{ color: "#EF4444", border: "none", background: "none", cursor: "pointer", padding: "4px" }}
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                      <td>
+                        <div className="action-cell">
+                          <button
+                            onClick={() => handleDeleteSingleBooking(b.id)}
+                            title="ลบประวัตินี้"
+                            className="action-btn btn-delete"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -508,10 +529,10 @@ export default function AdminManagement({ onNavigate }) {
         </div>
       )}
 
-      {/* POPUP MODAL: ฟอร์มรถยนต์ */}
+      {/* 🟢 POPUP MODAL: ฟอร์มรถยนต์ (เพิ่มช่องเลข พ.ร.บ. และ วันหมดอายุ พ.ร.บ.) */}
       {isCarModalOpen && (
         <div className="modal-overlay" style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-          <div className="fg-rise" style={{ backgroundColor: "#fff", padding: "24px", borderRadius: "12px", width: "90%", maxWidth: "550px", boxShadow: "0 10px 25px rgba(0,0,0,0.15)" }}>
+          <div className="fg-rise" style={{ backgroundColor: "#fff", padding: "24px", borderRadius: "12px", width: "90%", maxWidth: "550px", boxShadow: "0 10px 25px rgba(0,0,0,0.15)", maxHeight: "90vh", overflowY: "auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
               <h3 style={{ margin: 0, color: "#1e3a8a", fontSize: "18px" }}>{editingCarId ? "✏️ แก้ไขข้อมูลสเปครถยนต์" : "✨ ลงทะเบียนเพิ่มรถคันใหม่"}</h3>
               <button onClick={closeCarModal} style={{ background: "none", border: "none", cursor: "pointer", color: "#6b7280" }}><X size={20} /></button>
@@ -536,9 +557,21 @@ export default function AdminManagement({ onNavigate }) {
                 <label style={{ fontSize: "13px", fontWeight: "600", display: "block", marginBottom: "4px" }}>ป้ายทะเบียน</label>
                 <input type="text" value={carForm.plate} onChange={e => setCarForm({...carForm, plate: e.target.value})} placeholder="เช่น 3กข-4567 กทม." required style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #d1d5db", boxSizing: "border-box" }} />
               </div>
-              <div style={{ gridColumn: "1 / -1" }}>
+              <div>
                 <label style={{ fontSize: "13px", fontWeight: "600", display: "block", marginBottom: "4px" }}>ความจุที่นั่ง</label>
-                <input type="number" value={carForm.seats} onChange={e => setCarForm({...carForm, seats: parseInt(e.target.value)})} required style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #d1d5db", boxSizing: "border-box" }} />
+                <input type="number" value={carForm.seats} onChange={e => setCarForm({...carForm, seats: parseInt(e.target.value) || 0})} required style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #d1d5db", boxSizing: "border-box" }} />
+              </div>
+
+              {/* 🟢 เพิ่มฟิลด์เลข พ.ร.บ. */}
+              <div>
+                <label style={{ fontSize: "13px", fontWeight: "600", display: "block", marginBottom: "4px", color: "#1e3a8a" }}>เลขที่ พ.ร.บ.</label>
+                <input type="text" value={carForm.act_number} onChange={e => setCarForm({...carForm, act_number: e.target.value})} placeholder="เช่น ACT-998877" style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #d1d5db", boxSizing: "border-box" }} />
+              </div>
+
+              {/* 🟢 เพิ่มฟิลด์วันหมดอายุ พ.ร.บ. */}
+              <div style={{ gridColumn: "1 / -1" }}>
+                <label style={{ fontSize: "13px", fontWeight: "600", display: "block", marginBottom: "4px", color: "#1e3a8a" }}>วันหมดอายุ พ.ร.บ.</label>
+                <input type="date" value={carForm.act_expiry_date} onChange={e => setCarForm({...carForm, act_expiry_date: e.target.value})} style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #d1d5db", boxSizing: "border-box" }} />
               </div>
               
               <div style={{ gridColumn: "1 / -1" }}>

@@ -28,11 +28,11 @@ function colorFor(key) {
   if (VEHICLE_COLORS[normalizedKey]) {
     return VEHICLE_COLORS[normalizedKey];
   }
-  
+
   const fallbackColors = ["#EF4444", "#6366F1", "#14B8A6", "#F43F5E", "#84CC16"];
   const charSum = normalizedKey.split("").reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
   return fallbackColors[Math.abs(charSum) % fallbackColors.length];
-}   
+}
 function toISO(date) {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, "0");
@@ -184,17 +184,20 @@ export default function TrafficCalendar({ currentUser, onNavigate }) {
                   key={date.toISOString()}
                   className={`cal-cell ${inMonth ? "" : "is-outside"} ${isToday ? "is-today" : ""}`}
                 >
-                  <span className="cal-cell-date">{date.getDate()}</span>
+
+                  <span className="cal-cell-date">
+                    <span>{date.getDate()}</span>
+                  </span>
                   {dayBookings.map((b) => (
                     <div
-                        key={b.id}
-                        className="cal-booking-bar"
-                        style={{ background: colorFor(b.vehicleId) }}
-                        title={`${b.plate || b.vehicleModel} · ${b.borrower}`}
+                      key={b.id}
+                      className="cal-booking-bar"
+                      style={{ background: colorFor(b.vehicleId) }}
+                      title={`${b.plate || b.vehicleModel} · ${b.borrower}`}
                     >
-                        {b.plate || b.vehicleModel}
+                      {b.plate || b.vehicleModel}
                     </div>
-                    ))}
+                  ))}
                 </div>
               );
             })}

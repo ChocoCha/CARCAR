@@ -1,0 +1,212 @@
+/* src/styles/admin.css */
+
+/* ==================== 1. แท็บเมนู & ปุ่มควบคุม ==================== */
+.admin-tab-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.admin-tabs {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.admin-tab-btn {
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--line, #d1d5db);
+  background-color: #ffffff;
+  color: var(--ink, #374151);
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.15s ease;
+  font-size: 13.5px;
+}
+
+.admin-tab-btn.is-active {
+  background-color: #1e3a8a;
+  color: #ffffff;
+  border-color: #1e3a8a;
+}
+
+.admin-add-btn {
+  padding: 10px 18px;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13.5px;
+}
+
+.admin-add-btn.btn-emp { background-color: #10b981; }
+.admin-add-btn.btn-car { background-color: #f59e0b; }
+
+/* ==================== 2. โครงสร้างตาราง Desktop ==================== */
+.admin-table {
+  background-color: #ffffff;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid var(--line, #e5e7eb);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.admin-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.admin-table th {
+  background-color: #f3f4f6;
+  border-bottom: 2px solid #e5e7eb;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: #374151;
+}
+
+.admin-table td {
+  padding: 12px;
+  border-bottom: 1px solid #f3f4f6;
+  font-size: 13.5px;
+}
+
+.action-cell {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+
+.action-btn {
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.action-btn.btn-edit { color: #2563eb; }
+.action-btn.btn-delete { color: #ef4444; }
+
+.vehicle-img {
+  width: 50px;
+  height: 35px;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid #e5e7eb;
+}
+
+.vehicle-img-placeholder {
+  width: 50px;
+  height: 35px;
+  background-color: #f3f4f6;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  color: #9ca3af;
+}
+
+/* ==================== 📱 3. ระบบ CARD VIEW สำหรับจอมือถือ (<= 768px) ==================== */
+@media (max-width: 768px) {
+  
+  .admin-tab-container {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .admin-tabs {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .admin-tab-btn, 
+  .admin-add-btn {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 10px 12px !important;
+    font-size: 13px !important;
+  }
+
+  .admin-table {
+    padding: 10px !important;
+    border: none !important;
+    background: transparent !important;
+  }
+
+  /* 🟢 ซ่อนหัวตาราง (THEAD) บนมือถือ */
+  .admin-table table thead {
+    display: none !important;
+  }
+
+  .admin-table table, 
+  .admin-table tbody {
+    display: block !important;
+    width: 100% !important;
+  }
+
+  /* 🟢 แปลงแต่ละแถว (TR) ให้กลายเป็นการ์ด */
+  .admin-table table tbody tr {
+    display: flex !important;
+    flex-direction: column !important;
+    background-color: #ffffff !important;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 10px !important;
+    padding: 12px !important;
+    margin-bottom: 12px !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
+  }
+
+  /* 🟢 ปรับ TD แต่ละช่องให้เรียงบรรทัดลงมาพอดีเป๊ะ */
+  .admin-table table tbody td {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 6px 0 !important;
+    border-bottom: 1px dashed #f3f4f6 !important;
+    font-size: 12.5px !important;
+    text-align: left !important;
+    width: 100% !important;
+  }
+
+  .admin-table table tbody td:last-child {
+    border-bottom: none !important;
+    padding-top: 10px !important;
+  }
+
+  /* 🟢 จัดปุ่มแก้ไข/ลบ และสถานะให้เห็นชัดเต็มตา */
+  .action-cell {
+    width: 100% !important;
+    justify-content: flex-end !important;
+    gap: 12px !important;
+  }
+
+  .action-btn {
+    padding: 6px 12px !important;
+    border-radius: 6px !important;
+    background-color: #f3f4f6 !important;
+  }
+
+  .vehicle-img,
+  .vehicle-img-placeholder {
+    width: 60px !important;
+    height: 40px !important;
+  }
+}

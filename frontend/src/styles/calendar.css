@@ -142,14 +142,26 @@
   opacity: 0.35;
 }
 
+/* 🟢 ช่อง "วันนี้" เด่นสะดุดตาด้วยกรอบสีส้มทองและเงาฟุ้ง */
 .cal-cell.is-today {
-  background: var(--amber-soft);
+  background-color: #ffe8e8 !important; /* แบ็คกราวด์สีครีมทองสดใส */
+  border: 2px solid #f50b0b !important; /* กรอบสีส้มทอง */
+  box-shadow: inset 0 0 0 1px #d90606, 0 2px 8px rgba(245, 158, 11, 0.3) !important;
 }
 
-.cal-cell-date {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--ink);
+/* 🟢 วงกลมไฮไลท์ตัวเลขวันที่เฉพาะ "วันนี้" */
+.cal-cell.is-today .cal-cell-date {
+  color: #ffffff !important;
+  background-color: #d90606 !important; /* วงกลมสีส้มเข้ม */
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 12px;
+  margin-bottom: 2px;
 }
 
 .cal-cell-bookings {

@@ -1,6 +1,7 @@
 /* navbar.css */
 
 .navbar {
+  position: relative;   /* เพิ่ม */
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -9,6 +10,7 @@
   background: var(--surface);
   border-bottom: 1px solid var(--line);
   flex-wrap: wrap;
+  z-index: 9999;
 }
 
 .navbar-title {
@@ -130,4 +132,16 @@
   .navbar-user-name {
     display: none;
   }
+}
+
+.mobile-menu-wrapper{
+    position: relative;
+}
+
+.mobile-dropdown-menu{
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+
+    z-index: 10000;
 }

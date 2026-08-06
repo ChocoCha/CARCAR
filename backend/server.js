@@ -285,3 +285,18 @@ app.delete('/api/bookings/:id', async (req, res) => {
 });
 
 app.listen(5000, () => console.log('🚀 API CRUD Server รันเรียบร้อยที่พอร์ต 5000'));
+
+// 🟢 อัปเดตข้อมูล พ.ร.บ. รถยนต์
+app.put('/api/vehicles/:id/act', async (req, res) => {
+    const { id } = req.params;
+    const { act_expiry_date, act_number } = req.body;
+    try {
+        const connection = await mysql.createConnection(dbConfig);
+        await connection.execute(
+            'UPDATE vehicles SET act_expiry_date = ?, act_number = ? WHERE id = ?',
+            [act_expiry_date, act_number, id]
+        );
+        await connection.end();
+        res.json({ success: true, message: 'อัปเดตข้อมูล พ.ร.บ. เรียบร้อย' });
+    } catch (error) { res.status(500).json({ error: error.message }); }
+});

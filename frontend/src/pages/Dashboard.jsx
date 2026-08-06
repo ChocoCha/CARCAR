@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import MainLayout from "../layouts/MainLayout";
 import VehicleCard from "../components/VehicleCard";
-import { X, Calendar, User, Clock, CheckCircle, Eye, Maximize2 } from "lucide-react";
+import { X, Calendar, User, Clock, CheckCircle, Eye, Maximize2, AlertTriangle } from "lucide-react";
 import "../styles/vehicle.css";
 
 export default function Dashboard({ onNavigate }) { 
   const [currentUser] = useState(localStorage.getItem("borrowerName") || "พนักงานทั่วไป");
-  
+  const userRole = localStorage.getItem("userRole") || "employee";
+  const isAdmin = userRole.trim().toLowerCase() === "admin";
+
   const [vehicles, setVehicles] = useState([]);
   const [bookings, setBookings] = useState([]);
   
@@ -16,7 +18,6 @@ export default function Dashboard({ onNavigate }) {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
-  // 🟢 State สำหรับคุมการเปิดดูรูปภาพขนาดใหญ่พิเศษ (Lightbox แบบ Full Screen)
   const [zoomedImage, setZoomedImage] = useState(null);
 
   useEffect(() => {
@@ -64,6 +65,23 @@ export default function Dashboard({ onNavigate }) {
       setVehicles([]);
       setBookings([]);
     }
+  }
+
+  // 🟢 คำนวณวันหมดอายุ พ.ร.บ.
+  function getActWarning(expiryDateStr) {
+    if (!expiryDateStr) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const expiry = new Date(expiryDateStr);
+    expiry.setHours(0, 0, 0, 0);
+    
+    const diffTime = expiry - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays <= 90) {
+      return diffDays <= 0 ? "⚠️ พ.ร.บ. หมดอายุแล้ว! กรุณาต่อด่วน" : `⚠️ พ.ร.บ. ใกล้หมดอายุในอีก ${diffDays} วัน`;
+    }
+    return null;
   }
 
   function handleView(vehicle) {
@@ -126,7 +144,7 @@ export default function Dashboard({ onNavigate }) {
         alert("เซิร์ฟเวอร์หลังบ้านบันทึกไม่สำเร็จ");
       }
     } catch (err) {
-      alert("เกิดข้อผิดพลาดในการชื่มต่อเซิร์ฟเวอร์หลังบ้าน");
+      alert("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์หลังบ้าน");
     }
   }
 
@@ -145,22 +163,34 @@ export default function Dashboard({ onNavigate }) {
       </div>
 
       <div className="vehicle-grid">
-        {vehicles.map((vehicle) => (
-          <VehicleCard 
-            key={vehicle.id} 
-            vehicle={vehicle} 
-            onView={handleView} 
-            onSelect={handleSelect} 
-            onRefreshData={fetchData} 
-          />
-        ))}
+        {vehicles.map((vehicle) => {
+          const actWarning = getActWarning(vehicle.act_expiry_date);
+
+          return (
+            <div key={vehicle.id} style={{ position: "relative" }}>
+              
+              {/* แถบคาดเตือนสีแดงบนรูปรถ (แสดงเฉพาะแอดมิน เมื่อใกล้หมด พ.ร.บ. <= 90 วัน) */}
+              {isAdmin && actWarning && (
+                <div style={{ position: "absolute", top: "10px", left: "10px", right: "10px", zIndex: 10, backgroundColor: "#EF4444", color: "#fff", padding: "6px 12px", borderRadius: "6px", fontSize: "12px", fontWeight: "bold", display: "flex", alignItems: "center", gap: "6px", boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }}>
+                  <AlertTriangle size={15} /> {actWarning}
+                </div>
+              )}
+
+              <VehicleCard 
+                vehicle={vehicle} 
+                onView={handleView} 
+                onSelect={handleSelect} 
+                onRefreshData={fetchData} 
+              />
+            </div>
+          );
+        })}
       </div>
 
       {/* ==================== POPUP MODALS ==================== */}
       {modalMode && selectedVehicle && (
         <div className="modal-overlay" onClick={() => setModalMode(null)} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-          {/* 🟢 บีบขนาดความกว้างของป๊อปอัปสไตล์ Facebook ให้เหลือ 480px จะดูจับคู่กระชับกะทัดรัดขึ้นมากคัป */}
-          <div className="booking-modal fg-rise" style={{ maxWidth: "480px", width: "90%", backgroundColor: "#fff", padding: "20px", borderRadius: "12px", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)" }} onClick={e => e.stopPropagation()}>
+          <div className="booking-modal fg-rise" style={{ maxWidth: "480px", width: "90%", backgroundColor: "#fff", padding: "20px", borderRadius: "12px", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)" }} onClick={e => e.stopPropagation()}>
             
             {modalMode === "view" && (
               <>
@@ -170,37 +200,21 @@ export default function Dashboard({ onNavigate }) {
                 </div>
                 <div className="modal-body">
                   <div className="modal-vehicle-detailed-panel">
-                    {/* 🟢 [กรอบรูปสไตล์ Facebook เฟี้ยว ๆ]: ใช้สัดส่วนความกว้าง 100% บังคับตัดขอบด้วย object-fit: cover เพื่อให้รูปเต็มกรอบ ไม่มีขอบขาวขัดใจคัป */}
                     <div 
-  onClick={() => setZoomedImage(selectedVehicle.image)}
-  title="คลิกเพื่อส่องดูรูปขนาดใหญ่"
-  style={{ 
-    width: "100%", 
-    aspectRatio: "16 / 10", // 🌟 ใช้สูตร Aspect Ratio บังคับกรอบให้พอดีกับภาพรถยนต์ถ่ายทั่วไป
-    borderRadius: "12px", 
-    overflow: "hidden", 
-    border: "1px solid #e5e7eb", 
-    backgroundColor: "#f9fafb", 
-    position: "relative", 
-    cursor: "pointer", 
-    display: "flex" 
-  }}
->
-  <img 
-    src={selectedVehicle.image} 
-    alt={selectedVehicle.model} 
-    style={{ 
-      width: "100%", 
-      height: "100%", 
-      objectFit: "cover", // 🌟 รูปภาพจะถมขยายเต็มกรอบอย่างสมส่วน ไม่ยืด ไม่เบี้ยวคัป
-      objectPosition: "center" // 🌟 ล็อกโฟกัสเลนส์ให้อยู่ตรงกลางภาพตัวรถเป๊ะๆ
-    }}
-    onError={(e)=>{e.target.src="https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=600"}} 
-  />
-  <div style={{ position: "absolute", bottom: "10px", right: "10px", backgroundColor: "rgba(0, 0, 0, 0.65)", color: "#fff", padding: "4px 10px", borderRadius: "6px", fontSize: "11px", display: "flex", alignItems: "center", gap: "4px", fontWeight: "500" }}>
-    <Maximize2 size={12} /> คลิกขยายรูป
-  </div>
-</div>
+                      onClick={() => setZoomedImage(selectedVehicle.image)}
+                      title="คลิกเพื่อส่องดูรูปขนาดใหญ่"
+                      style={{ width: "100%", aspectRatio: "16 / 10", borderRadius: "12px", overflow: "hidden", border: "1px solid #e5e7eb", backgroundColor: "#f9fafb", position: "relative", cursor: "pointer", display: "flex" }}
+                    >
+                      <img 
+                        src={selectedVehicle.image} 
+                        alt={selectedVehicle.model} 
+                        style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center" }}
+                        onError={(e)=>{e.target.src="https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=600"}} 
+                      />
+                      <div style={{ position: "absolute", bottom: "10px", right: "10px", backgroundColor: "rgba(0, 0, 0, 0.65)", color: "#fff", padding: "4px 10px", borderRadius: "6px", fontSize: "11px", display: "flex", alignItems: "center", gap: "4px", fontWeight: "500" }}>
+                        <Maximize2 size={12} /> คลิกขยายรูป
+                      </div>
+                    </div>
 
                     <div className="modal-car-specs-grid" style={{ marginTop: "16px" }}>
                       <h3 style={{ margin: "0 0 10px 0", fontSize: "18px", color: "#111827" }}>{selectedVehicle.model}</h3>
@@ -230,12 +244,11 @@ export default function Dashboard({ onNavigate }) {
                     </div>
                   </div>
 
-                  {/* 🟢 [กรอบรูปกะทัดรัดสไตล์หน้าฟีดเฟส]: ปรับภาพสัดส่วนดีไซน์สมส่วนขึ้นด้วย object-fit: cover ขนาดพอดีตาคัป */}
                   <div className="modal-vehicle-info" style={{ padding: "10px", display: "flex", gap: "14px", backgroundColor: "#f9fafb", borderRadius: "8px", alignItems: "center", border: "1px solid #f3f4f6" }}>
                     <div 
                       onClick={() => setZoomedImage(selectedVehicle.image)}
                       title="คลิกส่องรูปใหญ่"
-                      style={{ width: "90px", height: "65px", overflow: "hidden", borderRadius: "6px", backgroundColor: "#fff", display: "flex", alignItems: "center", cursor: "pointer", border: "1px solid #e5e7eb", position: "relative" }}
+                      style={{ width: "90px", height: "65px", overflow: "hidden", borderRadius: "6px", backgroundColor: "#fff", display: "flex", alignItems: "center", cursor: "pointer", border: "1px solid #e5e7eb" }}
                     >
                       <img 
                         src={selectedVehicle.image} 
@@ -274,7 +287,7 @@ export default function Dashboard({ onNavigate }) {
         </div>
       )}
 
-      {/* ==================== 🟢 [POPUP LIGHTBOX]: แสดงขยายรูปภาพขนาดเต็มจอระดับ Full Screen ทรงประสิทธิภาพคัป ==================== */}
+      {/* LIGHTBOX ขยายรูปภาพ */}
       {zoomedImage && (
         <div 
           onClick={() => setZoomedImage(null)} 
