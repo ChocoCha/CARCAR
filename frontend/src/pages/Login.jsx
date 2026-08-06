@@ -7,6 +7,8 @@ import {
   ChevronRight,
   Check,
   X,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import "../styles/login.css";
 
@@ -26,11 +28,36 @@ function PlateInput({ value, onChange, placeholder }) {
   );
 }
 
-function Field({ icon: Icon, ...props }) {
+// 🟢 ปรับคอมโพเนนต์ Field ให้รองรับปุ่มเปิด-ปิดตาดูรหัสผ่าน
+function Field({ icon: Icon, isPassword, showPassword, onTogglePassword, ...props }) {
   return (
-    <div className="fg-input-wrap">
+    <div className="fg-input-wrap" style={{ position: "relative", display: "flex", alignItems: "center" }}>
       <Icon size={16} />
-      <input {...props} />
+      <input 
+        {...props} 
+        type={isPassword ? (showPassword ? "text" : "password") : props.type} 
+        style={{ paddingRight: isPassword ? "36px" : undefined, width: "100%" }}
+      />
+      {isPassword && (
+        <button
+          type="button"
+          onClick={onTogglePassword}
+          style={{
+            position: "absolute",
+            right: "10px",
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            color: "#6b7280",
+            display: "flex",
+            alignItems: "center",
+            padding: "2px"
+          }}
+          tabIndex="-1"
+        >
+          {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+        </button>
+      )}
     </div>
   );
 }
@@ -42,10 +69,12 @@ export default function Login({ onLoginSuccess }) {
   // employee login state
   const [empId, setEmpId] = useState("");
   const [empPass, setEmpPass] = useState("");
+  const [showEmpPass, setShowEmpPass] = useState(false); // 🟢 State สลับตาพนักงาน
 
   // admin login state
   const [adminUser, setAdminUser] = useState("");
   const [adminPass, setAdminPass] = useState("");
+  const [showAdminPass, setShowAdminPass] = useState(false); // 🟢 State สลับตาแอดมิน
 
   const timerRef = useRef(null);
   const redirectRef = useRef(null);
@@ -84,14 +113,12 @@ export default function Login({ onLoginSuccess }) {
 
       const data = await response.json();
 
-     if (response.ok && data.success) {
-  // 🟢 สลับกลับมาใช้สิทธิ์แนวประยุกต์: 
-  localStorage.setItem("borrowerName", data.user.name);       // ให้จำชื่อภาษาไทยเหมือนเดิม (หน้าจอทุกหน้าจะกลับมาโชว์ชื่อไทยทันที!)
-  localStorage.setItem("borrowerEmpId", data.user.username);  // แอบเก็บรหัสพนักงานภาษาอังกฤษแยกไว้คุยกับเดตาเบส
-  localStorage.setItem("userRole", "employee");
-      
-  
-  flashStatus("ok", `ยินดีต้อนรับคุณ ${data.user.name} — กำลังไปหน้าแดชบอร์ด`);
+      if (response.ok && data.success) {
+        localStorage.setItem("borrowerName", data.user.name);
+        localStorage.setItem("borrowerEmpId", data.user.username);
+        localStorage.setItem("userRole", "employee");
+        
+        flashStatus("ok", `ยินดีต้อนรับคุณ ${data.user.name} — กำลังไปหน้าแดชบอร์ด`);
         
         clearTimeout(redirectRef.current);
         redirectRef.current = setTimeout(() => {
@@ -127,19 +154,16 @@ export default function Login({ onLoginSuccess }) {
       const data = await response.json();
 
       if (response.ok && data.success) {
-  // 🟢 สำหรับแอดมินก็ทำเช่นเดียวกันคัป
-  localStorage.setItem("borrowerName", data.user.name || "ผู้ดูแลระบบสูงสุด"); 
-  localStorage.setItem("borrowerEmpId", data.user.username);  // เก็บคำว่า admin แยกไว้
-  localStorage.setItem("userRole", "admin");
-  
-  flashStatus("ok", "🛡️ ยืนยันตัวตนแอดมินสำเร็จ — กำลังเปิดหน้าแผงควบคุมหลัก");
+        localStorage.setItem("borrowerName", data.user.name || "ผู้ดูแลระบบสูงสุด"); 
+        localStorage.setItem("borrowerEmpId", data.user.username);
+        localStorage.setItem("userRole", "admin");
+        
+        flashStatus("ok", "🛡️ ยืนยันตัวตนแอดมินสำเร็จ — กำลังเปิดหน้าแผงควบคุมหลัก");
         
         clearTimeout(redirectRef.current);
         redirectRef.current = setTimeout(() => {
           onLoginSuccess?.(); 
         }, 1200);
-      
-        
       } else {
         flashStatus("err", data.message || "ชื่อผู้ใช้หรือรหัสผ่านแอดมินไม่ถูกต้อง");
       }
@@ -205,7 +229,9 @@ export default function Login({ onLoginSuccess }) {
                   <label className="fg-label">รหัสผ่าน</label>
                   <Field
                     icon={Lock}
-                    type="password"
+                    isPassword={true}
+                    showPassword={showEmpPass}
+                    onTogglePassword={() => setShowEmpPass(!showEmpPass)}
                     value={empPass}
                     onChange={(e) => setEmpPass(e.target.value)}
                     placeholder="••••••••"
@@ -229,14 +255,16 @@ export default function Login({ onLoginSuccess }) {
                     icon={User}
                     value={adminUser}
                     onChange={(e) => setAdminUser(e.target.value)}
-                    placeholder="ชื่อผู้ใช้แอดมิน "
+                    placeholder="ชื่อผู้ใช้แอดมิน"
                   />
                 </div>
                 <div className="fg-field-group">
                   <label className="fg-label">รหัสผ่าน</label>
                   <Field
                     icon={Lock}
-                    type="password"
+                    isPassword={true}
+                    showPassword={showAdminPass}
+                    onTogglePassword={() => setShowAdminPass(!showAdminPass)}
                     value={adminPass}
                     onChange={(e) => setAdminPass(e.target.value)}
                     placeholder="รหัสผ่านแอดมิน"
