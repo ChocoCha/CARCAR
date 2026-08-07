@@ -125,23 +125,34 @@
   color: var(--ink);
 }
 
-@media (max-width: 640px) {
-  .navbar {
-    padding: 16px 18px;
+/* 🟢 บนจอคอมปกติ: ซ่อนปุ่มสามขีด */
+.mobile-menu-wrapper {
+  display: none;
+}
+
+/* 🟢 เมื่อย่อหน้าจอ หรือเปิดบนมือถือ (<= 768px) */
+@media (max-width: 768px) {
+  /* แสดงปุ่มสามขีดฝั่งซ้าย */
+  .mobile-menu-wrapper {
+    display: block;
   }
-  .navbar-user-name {
+
+  /* ซ่อนโปรไฟล์ฝั่งขวาบนมือถือ */
+  .desktop-user-wrapper {
     display: none;
   }
 }
 
-.mobile-menu-wrapper{
-    position: relative;
-}
-
-.mobile-dropdown-menu{
-    position: absolute;
-    top: calc(100% + 8px);
-    left: 0;
-
-    z-index: 10000;
+.mobile-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;                /* 🟢 ให้เด้งเมนูออกมาทางฝั่งซ้าย */
+  right: auto;
+  min-width: 200px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  z-index: 10000;
 }

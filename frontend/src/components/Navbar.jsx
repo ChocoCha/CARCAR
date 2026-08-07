@@ -9,10 +9,12 @@ export default function Navbar({ onNavigate }) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
-  const [isNavMenuOpen, setIsNavMenuOpen] = useState(false);
-  const navMenuRef = useRef(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const mobileMenuRef = useRef(null);
 
   const [warningCount, setWarningCount] = useState(0);
+
+  const API_BASE = `http://${window.location.hostname}:5000/api`;
 
   useEffect(() => {
     if (isAdmin) checkActExpiry();
@@ -20,7 +22,7 @@ export default function Navbar({ onNavigate }) {
 
   async function checkActExpiry() {
     try {
-      const res = await fetch("http://localhost:5000/api/vehicles");
+      const res = await fetch(`${API_BASE}/vehicles`);
       if (res.ok) {
         const vehicles = await res.json();
         const today = new Date();
@@ -47,8 +49,8 @@ export default function Navbar({ onNavigate }) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsDropdownOpen(false);
       }
-      if (navMenuRef.current && !navMenuRef.current.contains(event.target)) {
-        setIsNavMenuOpen(false);
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target)) {
+        setIsMobileMenuOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -56,13 +58,13 @@ export default function Navbar({ onNavigate }) {
   }, []);
 
   const handleLogout = () => {
-    if (!confirm(" คุณต้องการออกจากระบบใช่หรือไม่?")) return;
+    if (!confirm("คุณต้องการออกจากระบบใช่หรือไม่?")) return;
     localStorage.clear();
     window.location.reload();
   };
 
   const handleMenuClick = (targetPage) => {
-    setIsNavMenuOpen(false);
+    setIsMobileMenuOpen(false);
     if (typeof onNavigate === "function") {
       onNavigate(targetPage);
     }
@@ -70,19 +72,24 @@ export default function Navbar({ onNavigate }) {
 
   return (
     <header className="navbar">
-      {/* 🟢 ฝั่งซ้าย: ปุ่มเมนูสามขีด (แสดงบนมือถือ) */}
+      {/* 🟢 ฝั่งซ้าย: ปุ่มสามขีด (โชว์เฉพาะมือถือ/จอย่อ) */}
       <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-        <div ref={navMenuRef} className="mobile-menu-wrapper" style={{ position: "relative" }}>
+        <div ref={mobileMenuRef} className="mobile-menu-wrapper" style={{ position: "relative" }}>
           <button 
             type="button" 
             className="navbar-icon-btn mobile-menu-btn"
-            onClick={() => setIsNavMenuOpen(!isNavMenuOpen)}
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           >
             <Menu size={20} />
           </button>
 
-          {isNavMenuOpen && (
-            <div className="mobile-dropdown-menu">
+          {/* Dropdown เมนูนำทาง + ออกจากระบบ รวมในสามขีดฝั่งซ้าย */}
+          {isMobileMenuOpen && (
+            <div className="mobile-dropdown-menu" style={{ left: 0, right: "auto" }}>
+              <div style={{ padding: "8px 12px", fontSize: "12px", fontWeight: "bold", color: "var(--stone)", borderBottom: "1px solid var(--line)", marginBottom: "4px" }}>
+                👤 {currentUser}
+              </div>
+
               <button type="button" onClick={() => handleMenuClick("dashboard")} className="dropdown-item">
                 <LayoutGrid size={17} /> หน้าหลัก
               </button>
@@ -97,26 +104,31 @@ export default function Navbar({ onNavigate }) {
                 <>
                   <div style={{ borderTop: "1px dashed var(--line)", margin: "6px 0" }} />
                   <button type="button" onClick={() => handleMenuClick("act-management")} className="dropdown-item text-red">
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                      <FileText size={17} /> ข้อมูล พ.ร.บ.
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", width: "100%", justifyContent: "space-between" }}>
+                      <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <FileText size={17} /> ข้อมูล พ.ร.บ.
+                      </span>
+                      {warningCount > 0 && <span className="badge-red">{warningCount}</span>}
                     </div>
-                    {warningCount > 0 && (
-                      <span className="badge-red">{warningCount}</span>
-                    )}
                   </button>
                   <button type="button" onClick={() => handleMenuClick("admin-panel")} className="dropdown-item text-amber">
                     <ShieldAlert size={17} /> แผงผู้ดูแลระบบ
                   </button>
                 </>
               )}
+
+              <div style={{ borderTop: "1px solid var(--line)", margin: "6px 0" }} />
+              <button type="button" onClick={handleLogout} className="dropdown-item text-red">
+                <LogOut size={16} /> ออกจากระบบ
+              </button>
             </div>
           )}
         </div>
       </div>
 
-      {/* 🟢 ฝั่งขวา: โปรไฟล์ผู้ใช้ + Dropdown ล็อกเอาต์ */}
+      {/* 🟢 ฝั่งขวา: โปรไฟล์ผู้ใช้สำหรับหน้าจอคอม Desktop */}
       <div className="navbar-actions">
-        <div ref={dropdownRef} style={{ position: "relative" }}>
+        <div ref={dropdownRef} className="desktop-user-wrapper" style={{ position: "relative" }}>
           <button 
             type="button"
             className="navbar-user"
