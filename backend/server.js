@@ -17,7 +17,7 @@ const dbConfig = {
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '',
     database: process.env.DB_NAME || 'car_booking_db',
-    port: process.env.DB_PORT || 3306
+    port: process.env.DB_PORT || 3307
 };
 
 app.use('/uploads', express.static('uploads'));
@@ -36,20 +36,35 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 // ==================== [ 1. Login ] ====================
+// ==================== [ Login หน้าเดียว รวมทุก Role ] ====================
 app.post('/api/login', async (req, res) => {
-    const username = req.body.username || req.body.empId || '';
-    const password = req.body.password || req.body.empPass || '';
-    const role = req.body.role || 'employee';
+    const username = req.body.username || '';
+    const password = req.body.password || '';
+
+    if (!username.trim() || !password.trim()) {
+        return res.status(400).json({ success: false, message: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
+    }
+
     try {
         const connection = await mysql.createConnection(dbConfig);
+        // 🟢 เช็คแค่ username กับ password พอ แล้วให้ DB คืนค่า role กลับมา
         const [rows] = await connection.execute(
-            'SELECT username, name, dept, role FROM users WHERE username = ? AND password = ? AND role = ?',
-            [username.trim(), password.trim(), role]
+            'SELECT username, name, dept, role FROM users WHERE username = ? AND password = ?',
+            [username.trim(), password.trim()]
         );
         await connection.end();
-        if (rows.length > 0) res.json({ success: true, user: rows[0] });
-        else res.status(401).json({ success: false, message: 'ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง' });
-    } catch (error) { res.status(500).json({ error: error.message }); }
+
+        if (rows.length > 0) {
+            const user = rows[0];
+            // 🟢 ส่งข้อมูล user และ role กลับไปให้ Frontend
+            res.json({ success: true, user: user });
+        } else {
+            res.status(401).json({ success: false, message: 'ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง' });
+        }
+    } catch (error) { 
+        console.error("Login Error:", error);
+        res.status(500).json({ error: error.message }); 
+    }
 });
 
 // ==================== [ 2. Employees ] ====================
@@ -104,7 +119,9 @@ app.put('/api/employees/:id', async (req, res) => {
         
         await connection.end();
         res.json({ success: true });
-    } catch (error) { res.status(500).json({ error: error.message }); }
+    } catch (error) { 
+    console.error("🔥 Login Error:", error); // ปริ้นท์บอกใน Terminal
+    res.status(500).json({ error: error.message, details: error.code }); }
 });
 
 app.delete('/api/employees/:id', async (req, res) => {
@@ -151,19 +168,33 @@ app.post('/api/vehicles', upload.single('imageFile'), async (req, res) => {
 
 app.put('/api/vehicles/:id', upload.single('imageFile'), async (req, res) => {
     const { id } = req.params;
-    const { model, plate, seats, image, status } = req.body;
-    // 🟢 ใช้ Relative Path
+    const { model, plate, seats, image, status, act_number, act_expiry_date } = req.body;
     let imageUrl = req.file ? `/uploads/${req.file.filename}` : image;
 
     try {
         const connection = await mysql.createConnection(dbConfig);
+        // 🟢 เพิ่ม act_number และ act_expiry_date เข้าคำสั่ง UPDATE SQL
         await connection.execute(
-            'UPDATE vehicles SET model = ?, plate = ?, seats = ?, image = ?, status = ? WHERE id = ?',
-            [model.trim(), plate.trim(), seats, imageUrl, status, id]
+            `UPDATE vehicles 
+             SET model = ?, plate = ?, seats = ?, image = ?, status = ?, act_number = ?, act_expiry_date = ? 
+             WHERE id = ?`,
+            [
+                model ? model.trim() : '', 
+                plate ? plate.trim() : '', 
+                seats, 
+                imageUrl, 
+                status, 
+                act_number || '', 
+                act_expiry_date || null, 
+                id
+            ]
         );
         await connection.end();
         res.json({ success: true });
-    } catch (error) { res.status(500).json({ error: error.message }); }
+    } catch (error) { 
+        console.error("Error updating vehicle:", error);
+        res.status(500).json({ error: error.message }); 
+    }
 });
 
 app.delete('/api/vehicles/:id', async (req, res) => {

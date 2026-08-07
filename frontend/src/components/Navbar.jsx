@@ -56,7 +56,7 @@ export default function Navbar({ onNavigate }) {
   }, []);
 
   const handleLogout = () => {
-    if (!confirm("🔒 คุณต้องการออกจากระบบใช่หรือไม่?")) return;
+    if (!confirm(" คุณต้องการออกจากระบบใช่หรือไม่?")) return;
     localStorage.clear();
     window.location.reload();
   };

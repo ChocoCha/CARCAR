@@ -9,6 +9,8 @@ export default function AdminManagement({ onNavigate }) {
   const [vehicles, setVehicles] = useState([]);
   const [bookings, setBookings] = useState([]);
 
+  const API_BASE = `http://${window.location.hostname}:5000/api`;
+
   // State ติ๊กเลือก Checkbox รายการจอง
   const [selectedBookingIds, setSelectedBookingIds] = useState([]);
 
@@ -107,37 +109,37 @@ export default function AdminManagement({ onNavigate }) {
   }
 
   async function handleSaveVehicle(e) {
-    e.preventDefault();
-    const isEdit = !!editingCarId;
-    const url = isEdit ? `http://localhost:5000/api/vehicles/${editingCarId}` : "http://localhost:5000/api/vehicles";
-    const method = isEdit ? "PUT" : "POST";
+  e.preventDefault();
+  const isEdit = !!editingCarId;
+  const url = isEdit ? `${API_BASE}/vehicles/${editingCarId}` : `${API_BASE}/vehicles`;
+  const method = isEdit ? "PUT" : "POST";
 
-    const formData = new FormData();
-    formData.append("id", carForm.id);
-    formData.append("model", carForm.model);
-    formData.append("plate", carForm.plate);
-    formData.append("seats", carForm.seats);
-    formData.append("status", carForm.status);
-    formData.append("image", carForm.image); 
-    // 🟢 ส่งค่า พ.ร.บ. ไปยัง backend
-    formData.append("act_number", carForm.act_number);
-    formData.append("act_expiry_date", carForm.act_expiry_date);
-    
-    if (selectedFile) {
-      formData.append("imageFile", selectedFile);
-    }
-
-    const res = await fetch(url, { method, body: formData });
-
-    if (res.ok) {
-      alert(isEdit ? "🎯 แก้ไขสเปครถและข้อมูล พ.ร.บ. สำเร็จ!" : "✨ ลงทะเบียนยานพาหนะสำเร็จ!");
-      closeCarModal();
-      fetchVehicles();
-    } else {
-      const errData = await res.json();
-      alert(errData.message || "เกิดข้อผิดพลาดในการบันทึกข้อมูล");
-    }
+  const formData = new FormData();
+  formData.append("id", carForm.id);
+  formData.append("model", carForm.model);
+  formData.append("plate", carForm.plate);
+  formData.append("seats", carForm.seats);
+  formData.append("status", carForm.status);
+  formData.append("image", carForm.image); 
+  
+  formData.append("act_number", carForm.act_number || "");
+  formData.append("act_expiry_date", carForm.act_expiry_date || "");
+  
+  if (selectedFile) {
+    formData.append("imageFile", selectedFile);
   }
+
+  const res = await fetch(url, { method, body: formData });
+
+  if (res.ok) {
+    alert(isEdit ? "🎯 แก้ไขสเปครถและข้อมูล พ.ร.บ. สำเร็จ!" : "✨ ลงทะเบียนยานพาหนะสำเร็จ!");
+    closeCarModal();
+    fetchVehicles();
+  } else {
+    const errData = await res.json();
+    alert(errData.message || "เกิดข้อผิดพลาดในการบันทึกข้อมูล");
+  }
+}
 
   async function handleDeleteVehicle(id) {
     if (!confirm(`ยืนยันลบรถรหัส ${id} ออกจากระบบ?`)) return;
@@ -146,26 +148,34 @@ export default function AdminManagement({ onNavigate }) {
   }
 
   async function handleStatusChange(car, nextStatus) {
-    try {
-      const res = await fetch(`http://localhost:5000/api/vehicles/${car.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: car.model,
-          plate: car.plate,
-          seats: car.seats,
-          image: car.image,
-          status: nextStatus,
-          act_number: car.act_number,
-          act_expiry_date: car.act_expiry_date
-        })
-      });
-      if (res.ok) {
-        alert(`🎯 สลับสถานะรถรหัส ${car.id.toUpperCase()} เรียบร้อย!`);
-        fetchVehicles(); 
-      }
-    } catch (err) { console.error(err); }
+  try {
+    // 🟢 เปลี่ยนมาใช้ API_BASE และส่งข้อมูลครบถ้วนรวมถึง พ.ร.บ.
+    const res = await fetch(`${API_BASE}/vehicles/${car.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: car.model,
+        plate: car.plate,
+        seats: car.seats,
+        image: car.image,
+        status: nextStatus,
+        act_number: car.act_number || "",
+        act_expiry_date: car.act_expiry_date ? car.act_expiry_date.split("T")[0] : ""
+      })
+    });
+
+    if (res.ok) {
+      alert(`🎯 สลับสถานะรถรหัส ${car.id.toUpperCase()} เรียบร้อย!`);
+      fetchVehicles(); 
+    } else {
+      const err = await res.json();
+      alert(`❌ เปลี่ยนสถานะไม่สำเร็จ: ${err.message || err.error}`);
+    }
+  } catch (err) { 
+    console.error("Error updating status:", err); 
+    alert("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์หลังบ้านได้");
   }
+}
 
   function startEditCar(car) {
     setEditingCarId(car.id);
@@ -495,10 +505,7 @@ export default function AdminManagement({ onNavigate }) {
               <button onClick={closeEmpModal} style={{ background: "none", border: "none", cursor: "pointer", color: "#6b7280" }}><X size={20} /></button>
             </div>
             <form onSubmit={handleSaveEmployee} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-              <div>
-                <label style={{ fontSize: "13px", fontWeight: "600", display: "block", marginBottom: "4px" }}>รหัสพนักงาน / Username</label>
-                <input type="text" value={empForm.id} onChange={e => setEmpForm({...empForm, id: e.target.value})} placeholder="เช่น EMP-1099" required style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #d1d5db", boxSizing: "border-box" }} />
-              </div>
+              
               <div>
                 <label style={{ fontSize: "13px", fontWeight: "600", display: "block", marginBottom: "4px" }}>ชื่อ-นามสกุล</label>
                 <input type="text" value={empForm.name} onChange={e => setEmpForm({...empForm, name: e.target.value})} placeholder="ชื่อจริง-นามสกุล" required style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #d1d5db", boxSizing: "border-box" }} />
@@ -517,7 +524,11 @@ export default function AdminManagement({ onNavigate }) {
                 </div>
               </div>
               <div>
-                <label style={{ fontSize: "13px", fontWeight: "600", display: "block", marginBottom: "4px" }}>รหัสผ่านความปลอดภัย</label>
+                <label style={{ fontSize: "13px", fontWeight: "600", display: "block", marginBottom: "4px" }}>ชื่อผู้ใช้งาน / Username</label>
+                <input type="text" value={empForm.id} onChange={e => setEmpForm({...empForm, id: e.target.value})} placeholder="เช่น EMP-1099" required style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #d1d5db", boxSizing: "border-box" }} />
+              </div>
+              <div>
+                <label style={{ fontSize: "13px", fontWeight: "600", display: "block", marginBottom: "4px" }}>รหัสผ่าน</label>
                 <input type="text" value={empForm.password} onChange={e => setEmpForm({...empForm, password: e.target.value})} required style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #d1d5db", boxSizing: "border-box" }} />
               </div>
               <div style={{ display: "flex", gap: "10px", marginTop: "10px", justifyContent: "flex-end" }}>
@@ -575,7 +586,7 @@ export default function AdminManagement({ onNavigate }) {
               </div>
               
               <div style={{ gridColumn: "1 / -1" }}>
-                <label style={{ fontSize: "13px", fontWeight: "600", display: "block", marginBottom: "4px" }}>อัปเลือตรูปภาพจากคอมพิวเตอร์ของคุณ</label>
+                <label style={{ fontSize: "13px", fontWeight: "600", display: "block", marginBottom: "4px" }}>อัปโหลดรูปภาพจากคอมพิวเตอร์ของคุณ</label>
                 <div style={{ display: "flex", alignItems: "center", gap: "12px", marginTop: "4px" }}>
                   <label htmlFor="carImageFileInput" style={{ display: "inline-flex", alignItems: "center", gap: "8px", padding: "8px 16px", backgroundColor: "#f3f4f6", border: "1px solid #d1d5db", borderRadius: "6px", cursor: "pointer", fontSize: "13px", fontWeight: "600", color: "#4b5563" }}>
                     <Upload size={15} /> คลิกเลือกไฟล์...
