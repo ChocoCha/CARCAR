@@ -1,8 +1,18 @@
 import { useState, useEffect } from "react";
 import MainLayout from "../layouts/MainLayout";
-import { Clock, Calendar, User, KeyRound, Tag, Eye, Trash2, X, ClipboardList, History, Maximize2, AlertCircle } from "lucide-react";
+import { Clock, Calendar, User, KeyRound, Tag, Eye, Trash2, X, ClipboardList, History, Maximize2 } from "lucide-react";
 
 export default function MyBookings({ onNavigate }) {
+  // 🟢 ดึง IP ของเครื่องเซิร์ฟเวอร์อัตโนมัติ
+  const API_BASE = `http://${window.location.hostname}:5000/api`;
+
+  // 🟢 Helper แปลง Path รูปภาพให้เป็น URL สมบูรณ์
+  const getImageUrl = (imagePath) => {
+    if (!imagePath) return "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=600";
+    if (imagePath.startsWith("http")) return imagePath;
+    return `http://${window.location.hostname}:5000${imagePath.startsWith("/") ? "" : "/"}${imagePath}`;
+  };
+
   const [currentUser] = useState(localStorage.getItem("borrowerName") || "ผู้ใช้งาน");  
   const [activeSubTab, setActiveSubTab] = useState("current"); // 'current' | 'history'
   const [myBookings, setMyBookings] = useState([]);
@@ -18,7 +28,8 @@ export default function MyBookings({ onNavigate }) {
 
   async function fetchMyBookings() {
     try {
-      const resVehicles = await fetch("http://localhost:5000/api/vehicles");
+      // 🟢 ดึงข้อมูลผ่าน API_BASE
+      const resVehicles = await fetch(`${API_BASE}/vehicles`);
       let currentVehicles = [];
       if (resVehicles.ok) {
         currentVehicles = await resVehicles.json();
@@ -28,15 +39,16 @@ export default function MyBookings({ onNavigate }) {
       const empId = localStorage.getItem("borrowerEmpId") || currentUser;
       const userRole = localStorage.getItem("userRole") || "employee";
       
-      const res = await fetch(`http://localhost:5000/api/bookings?borrower=${encodeURIComponent(empId)}&role=${userRole}&isMyBooking=true`);
+      const res = await fetch(`${API_BASE}/bookings?borrower=${encodeURIComponent(empId)}&role=${userRole}&isMyBooking=true`);
       if (res.ok) {
         const bookingsData = await res.json();
         
         const updatedBookings = bookingsData.map(b => {
           const matchedCar = currentVehicles.find(c => c.id?.toLowerCase().trim() === (b.vehicle_id || "").toLowerCase().trim());
+          const rawImg = matchedCar ? matchedCar.image : b.image;
           return {
             ...b,
-            image: matchedCar ? matchedCar.image : b.image
+            image: getImageUrl(rawImg) // 🟢 แปลงเป็น URL สมบูรณ์
           };
         });
         setMyBookings(updatedBookings);
@@ -46,12 +58,12 @@ export default function MyBookings({ onNavigate }) {
     }
   }
 
-  // 🟢 ปรับเปลี่ยนเป็นการเรียก Soft Cancel (อัปเดต status = 'cancelled') ประวัติจะไม่หาย!
+  // 🟢 ยกเลิกการจอง
   async function handleCancelBooking(bookingId, modelName) {
     if (!confirm(`⚠️ ยืนยันยกเลิกคำขอจองคิวรถ [ ${modelName} ] ใช่หรือไม่?\n(สถานะจะเปลี่ยนเป็นยกเลิก และปลดล็อกคิวในปฏิทินทันที)`)) return;
 
     try {
-      const res = await fetch(`http://localhost:5000/api/bookings/${bookingId}/cancel`, {
+      const res = await fetch(`${API_BASE}/bookings/${bookingId}/cancel`, {
         method: "PUT"
       });
 
@@ -66,9 +78,10 @@ export default function MyBookings({ onNavigate }) {
 
   function handleOpenDetails(booking) {
     const matchedCar = vehicles.find(c => c.id?.toLowerCase().trim() === (booking.vehicle_id || "").toLowerCase().trim());
+    const rawImg = matchedCar ? matchedCar.image : booking.image;
     setSelectedBooking({
       ...booking,
-      image: matchedCar ? matchedCar.image : booking.image
+      image: getImageUrl(rawImg)
     });
     setIsModalOpen(true);
   }
@@ -98,8 +111,6 @@ export default function MyBookings({ onNavigate }) {
     return bookingBorrower === myEmpId;
   });
 
-  // 🚀 ระบบ Auto History: ถ้ายังไม่เลยวัน และ ไม่ได้ยกเลิก ➔ อยู่คิวปัจจุบัน
-  // ถ้าเลยวันจองไปแล้ว (endDateStr < todayStr) หรือกด 'cancelled' ➔ ย้ายเข้าประวัติย้อนหลังออโต้คัป!
   const filteredBookings = totalOwnBookings.filter(booking => {
     if (!booking.end_date) return false;
     const endDateStr = getSafeDateStr(booking.end_date);
@@ -107,9 +118,9 @@ export default function MyBookings({ onNavigate }) {
     const isExpired = endDateStr < todayStr;
 
     if (activeSubTab === "current") {
-      return !isExpired && !isCancelled; // รายการที่ยังใช้งานได้อยู่
+      return !isExpired && !isCancelled;
     } else {
-      return isExpired || isCancelled; // รายการที่หมดอายุ หรือโดนยกเลิก ย้ายมาหมวดประวัติ
+      return isExpired || isCancelled;
     }
   });
 
@@ -123,7 +134,7 @@ export default function MyBookings({ onNavigate }) {
       <div className="dashboard-user-banner" style={{ marginBottom: "20px" }}>
         <div className="user-banner-welcome">
           <User size={18} className="icon-gold" />
-          <span>ประวัติบัญชีผู้ใช้งาน: <strong>{localStorage.getItem("borrowerName") || currentUser}</strong></span>
+          <span>บัญชีผู้ใช้งาน: <strong>{localStorage.getItem("borrowerName") || currentUser}</strong></span>
         </div>
       </div>
 
@@ -156,7 +167,6 @@ export default function MyBookings({ onNavigate }) {
                 <h4 style={{ margin: "0 0 8px 0", color: "#111827", display: "flex", alignItems: "center", gap: "8px" }}>
                   <Tag size={16} style={{ color: "#D97706" }} /> {booking.vehicle_model}
                   
-                  {/* แสดง Badge สถานะถ้าเป็นรายการที่ยกเลิก */}
                   {booking.status === 'cancelled' && (
                     <span style={{ fontSize: "11px", padding: "2px 8px", backgroundColor: "#FEF2F2", color: "#DC2626", border: "1px solid #FCA5A5", borderRadius: "4px", fontWeight: "bold" }}>
                       ❌ ยกเลิกการจอง

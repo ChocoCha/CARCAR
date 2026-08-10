@@ -1,10 +1,20 @@
 import { useState, useEffect } from "react";
 import MainLayout from "../layouts/MainLayout";
 import VehicleCard from "../components/VehicleCard";
-import { X, Calendar, User, Clock, CheckCircle, Eye, Maximize2, AlertTriangle } from "lucide-react";
+import { X, User, Eye, Maximize2, AlertTriangle } from "lucide-react";
 import "../styles/vehicle.css";
 
 export default function Dashboard({ onNavigate }) { 
+  // 🟢 ดึง IP เครื่องเซิร์ฟเวอร์อัตโนมัติ
+  const API_BASE = `http://${window.location.hostname}:5000/api`;
+
+  // 🟢 Helper แปลง Path รูปภาพให้ต่อ IP เครื่องเซิร์ฟเวอร์เต็มรูปแบบ
+  const getImageUrl = (imagePath) => {
+    if (!imagePath) return "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=600";
+    if (imagePath.startsWith("http")) return imagePath;
+    return `http://${window.location.hostname}:5000${imagePath.startsWith("/") ? "" : "/"}${imagePath}`;
+  };
+
   const [currentUser] = useState(localStorage.getItem("borrowerName") || "พนักงานทั่วไป");
   const userRole = localStorage.getItem("userRole") || "employee";
   const isAdmin = userRole.trim().toLowerCase() === "admin";
@@ -26,12 +36,20 @@ export default function Dashboard({ onNavigate }) {
 
   async function fetchData() {
     try {
-      const resVehicles = await fetch("http://localhost:5000/api/vehicles");
+      // 🟢 ดึงข้อมูลผ่าน API_BASE
+      const resVehicles = await fetch(`${API_BASE}/vehicles`);
       if (!resVehicles.ok) throw new Error("ดึงข้อมูลรถไม่สำเร็จ");
       const dataVehicles = await resVehicles.json();
-      setVehicles(Array.isArray(dataVehicles) ? dataVehicles : []);
+      
+      // 🟢 แปลง Field image ให้เป็น URL สมบูรณ์ก่อนเก็บเข้า State
+      const formattedVehicles = Array.isArray(dataVehicles) ? dataVehicles.map(v => ({
+        ...v,
+        image: getImageUrl(v.image)
+      })) : [];
+      
+      setVehicles(formattedVehicles);
 
-      const resBookings = await fetch("http://localhost:5000/api/bookings");
+      const resBookings = await fetch(`${API_BASE}/bookings`);
       if (!resBookings.ok) throw new Error("ดึงข้อมูลคิวจองไม่สำเร็จ");
       const dataBookings = await resBookings.json();
       
@@ -121,7 +139,7 @@ export default function Dashboard({ onNavigate }) {
     }
 
     try {
-      const response = await fetch("http://localhost:5000/api/bookings", {
+      const response = await fetch(`${API_BASE}/bookings`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -158,7 +176,7 @@ export default function Dashboard({ onNavigate }) {
       <div className="dashboard-user-banner">
         <div className="user-banner-welcome">
           <User size={18} className="icon-gold" />
-          <span>ยินดีต้อนรับผู้ใช้งาน: <strong>{currentUser}</strong></span>
+          <span>ผู้ใช้งาน: <strong>{currentUser}</strong></span>
         </div>
       </div>
 
@@ -168,7 +186,6 @@ export default function Dashboard({ onNavigate }) {
 
           return (
             <div key={vehicle.id} style={{ position: "relative" }}>
-              
               {/* แถบคาดเตือนสีแดงบนรูปรถ (แสดงเฉพาะแอดมิน เมื่อใกล้หมด พ.ร.บ. <= 90 วัน) */}
               {isAdmin && actWarning && (
                 <div style={{ position: "absolute", top: "10px", left: "10px", right: "10px", zIndex: 10, backgroundColor: "#EF4444", color: "#fff", padding: "6px 12px", borderRadius: "6px", fontSize: "12px", fontWeight: "bold", display: "flex", alignItems: "center", gap: "6px", boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }}>

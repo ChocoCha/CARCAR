@@ -1,9 +1,19 @@
 import { useState, useEffect } from "react";
 import MainLayout from "../layouts/MainLayout";
 import { FileText, Edit3, AlertTriangle, CheckCircle, Save, X } from "lucide-react";
-import "../styles/admin.css"; // 🟢 เรียกใช้ CSS ชุด Responsive เดียวกับ Admin
+import "../styles/admin.css";
 
 export default function ActManagement({ onNavigate }) {
+  // 🟢 ดึง IP ของเครื่องเซิร์ฟเวอร์อัตโนมัติ
+  const API_BASE = `http://${window.location.hostname}:5000/api`;
+
+  // 🟢 Helper แปลง Path รูปภาพให้ต่อ IP เครื่องเซิร์ฟเวอร์เต็มรูปแบบ
+  const getImageUrl = (imagePath) => {
+    if (!imagePath) return "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=300";
+    if (imagePath.startsWith("http")) return imagePath;
+    return `http://${window.location.hostname}:5000${imagePath.startsWith("/") ? "" : "/"}${imagePath}`;
+  };
+
   const [vehicles, setVehicles] = useState([]);
   const [editingVehicle, setEditingVehicle] = useState(null);
   const [actForm, setActForm] = useState({ act_number: "", act_expiry_date: "" });
@@ -14,7 +24,8 @@ export default function ActManagement({ onNavigate }) {
 
   async function fetchVehicles() {
     try {
-      const res = await fetch("http://localhost:5000/api/vehicles");
+      // 🟢 เรียกผ่าน API_BASE
+      const res = await fetch(`${API_BASE}/vehicles`);
       if (res.ok) setVehicles(await res.json());
     } catch (err) {
       console.error(err);
@@ -32,7 +43,8 @@ export default function ActManagement({ onNavigate }) {
   async function handleSaveAct(e) {
     e.preventDefault();
     try {
-      const res = await fetch(`http://localhost:5000/api/vehicles/${editingVehicle.id}/act`, {
+      // 🟢 เรียกผ่าน API_BASE
+      const res = await fetch(`${API_BASE}/vehicles/${editingVehicle.id}/act`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(actForm)
@@ -53,7 +65,6 @@ export default function ActManagement({ onNavigate }) {
   return (
     <MainLayout activePage="act-management" onNavigate={onNavigate} title="📄 จัดการข้อมูล พ.ร.บ. ยานพาหนะ" subtitle="ตรวจสอบวันหมดอายุ พ.ร.บ. และบันทึกการต่ออายุ">
       
-      {/* 🟢 คุมด้วยคลาส admin-table + act-table */}
       <div className="admin-table">
         <table className="act-table">
           <thead>
@@ -63,7 +74,6 @@ export default function ActManagement({ onNavigate }) {
               <th style={{ textAlign: "left" }}>เลข พ.ร.บ.</th>
               <th style={{ textAlign: "center" }}>วันหมดอายุ พ.ร.บ.</th>
               <th style={{ textAlign: "center" }}>ระยะเวลาคงเหลือ / สถานะ</th>
-              
             </tr>
           </thead>
           <tbody>
@@ -95,7 +105,16 @@ export default function ActManagement({ onNavigate }) {
               return (
                 <tr key={v.id} style={{ backgroundColor: isExpired ? "#FEF2F2" : isWarning ? "#FFFBEB" : "transparent" }}>
                   <td>
-                    <img src={v.image} alt={v.model} className="vehicle-img" />
+                    {/* 🟢 แสดงผลรูปภาพผ่าน getImageUrl */}
+                    <img 
+                      src={getImageUrl(v.image)} 
+                      alt={v.model} 
+                      className="vehicle-img" 
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=300";
+                      }}
+                    />
                   </td>
                   <td>
                     <div style={{ fontWeight: "bold", color: "#111827" }}>{v.model}</div>
@@ -124,8 +143,6 @@ export default function ActManagement({ onNavigate }) {
                       </span>
                     )}
                   </td>
-
-                  
                 </tr>
               );
             })}
@@ -133,7 +150,6 @@ export default function ActManagement({ onNavigate }) {
         </table>
       </div>
 
-      
     </MainLayout>
   );
 }

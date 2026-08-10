@@ -12,7 +12,7 @@
   --fg-ink: #f2efe4;
   --fg-ink-soft: #928d78;
   --fg-danger: #ff5c47;
-  --fg-ok: #48e19a;
+  --fg-ok: #393f04;
   --fg-mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
   --fg-sans: 'Inter', -apple-system, 'Helvetica Neue', Arial, sans-serif;
 }
@@ -114,7 +114,7 @@
 
 .fg-form { display: flex; flex-direction: column; gap: 16px; }
 .fg-field-group { display: flex; flex-direction: column; gap: 7px; font-weight: 700; color: #ffffff;  }
-.fg-label { font-family: "Helvetica Neue", Arial, sans-serif; font-size: 10.5px; font-weight: 700; color: #ffffff; letter-spacing: 0.1em; text-transform: uppercase; }
+.fg-label { font-family: "Helvetica Neue", Arial, sans-serif; font-size: 10.5px; font-weight: 700; color: #ffffff; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; }
 
 .fg-input-wrap {
   background: var(--fg-panel-2);
@@ -149,7 +149,7 @@
 
 .fg-toast-slot { min-height: 40px; margin-top: 14px; }
 .fg-toast { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 10px; font-size: 12.5px; border: 1px solid; }
-.fg-toast.is-ok { background: rgba(72, 225, 154, 0.08); border-color: rgba(72, 225, 154, 0.3); color: var(--fg-ok); }
+.fg-toast.is-ok { background: rgba(72, 225, 154, 0.08); border-color: rgba(10, 170, 95, 0.3); color: var(--fg-ok); }
 .fg-toast.is-err { background: rgba(255, 92, 71, 0.08); border-color: rgba(255, 92, 71, 0.3); color: var(--fg-danger); }
 
 @media (max-width: 420px) {

@@ -126,9 +126,9 @@ export default function Login({ onLoginSuccess }) {
 
         // 🟢 แสดงข้อความต้อนรับตาม Role
         if (userRole === "admin") {
-          flashStatus("ok", `🛡️ ยินดีต้อนรับแอดมิน ${data.user.name} — กำลังเปิดแผงควบคุม`);
+          flashStatus("ok", `ยินดีต้อนรับแอดมิน ${data.user.name} `);
         } else {
-          flashStatus("ok", `ยินดีต้อนรับคุณ ${data.user.name} — กำลังเข้าสู่ระบบ`);
+          flashStatus("ok", `ยินดีต้อนรับคุณ ${data.user.name} `);
         }
 
         clearTimeout(redirectRef.current);

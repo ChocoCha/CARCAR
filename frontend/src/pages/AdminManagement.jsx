@@ -9,7 +9,15 @@ export default function AdminManagement({ onNavigate }) {
   const [vehicles, setVehicles] = useState([]);
   const [bookings, setBookings] = useState([]);
 
+  // 🟢 ดึง Host IP อัตโนมัติ รองรับการเชื่อมต่อผ่าน IP
   const API_BASE = `http://${window.location.hostname}:5000/api`;
+
+  // 🟢 Helper แปลง Path รูปภาพให้ต่อ IP สมบูรณ์
+  const getImageUrl = (imagePath) => {
+    if (!imagePath) return "";
+    if (imagePath.startsWith("http")) return imagePath;
+    return `http://${window.location.hostname}:5000${imagePath.startsWith("/") ? "" : "/"}${imagePath}`;
+  };
 
   // State ติ๊กเลือก Checkbox รายการจอง
   const [selectedBookingIds, setSelectedBookingIds] = useState([]);
@@ -22,7 +30,7 @@ export default function AdminManagement({ onNavigate }) {
   const [empForm, setEmpForm] = useState({ id: "", name: "", dept: "", password: "1234", role: "employee" });
   const [editingEmpId, setEditingEmpId] = useState(null);
 
-  // 🟢 State ฟอร์มรถยนต์ (เพิ่ม act_number และ act_expiry_date)
+  // State ฟอร์มรถยนต์
   const [carForm, setCarForm] = useState({ 
     id: "", 
     model: "", 
@@ -52,7 +60,7 @@ export default function AdminManagement({ onNavigate }) {
   // ==================== [ API: พนักงาน ] ====================
   async function fetchEmployees() {
     try {
-      const res = await fetch("http://localhost:5000/api/employees");
+      const res = await fetch(`${API_BASE}/employees`);
       if (res.ok) setEmployees(await res.json());
     } catch (err) { console.error(err); }
   }
@@ -60,7 +68,7 @@ export default function AdminManagement({ onNavigate }) {
   async function handleSaveEmployee(e) {
     e.preventDefault();
     const isEdit = !!editingEmpId;
-    const url = isEdit ? `http://localhost:5000/api/employees/${editingEmpId}` : "http://localhost:5000/api/employees";
+    const url = isEdit ? `${API_BASE}/employees/${editingEmpId}` : `${API_BASE}/employees`;
     const method = isEdit ? "PUT" : "POST";
 
     const res = await fetch(url, {
@@ -84,7 +92,7 @@ export default function AdminManagement({ onNavigate }) {
 
   async function handleDeleteEmployee(id) {
     if (!confirm(`ยืนยันลบบัญชีรหัส ${id}?`)) return;
-    const res = await fetch(`http://localhost:5000/api/employees/${id}`, { method: "DELETE" });
+    const res = await fetch(`${API_BASE}/employees/${id}`, { method: "DELETE" });
     if (res.ok) { fetchEmployees(); alert("ลบข้อมูลสำเร็จ"); }
   }
 
@@ -103,79 +111,79 @@ export default function AdminManagement({ onNavigate }) {
   // ==================== [ API: ยานพาหนะ ] ====================
   async function fetchVehicles() {
     try {
-      const res = await fetch("http://localhost:5000/api/vehicles");
+      const res = await fetch(`${API_BASE}/vehicles`);
       if (res.ok) setVehicles(await res.json());
     } catch (err) { console.error(err); }
   }
 
   async function handleSaveVehicle(e) {
-  e.preventDefault();
-  const isEdit = !!editingCarId;
-  const url = isEdit ? `${API_BASE}/vehicles/${editingCarId}` : `${API_BASE}/vehicles`;
-  const method = isEdit ? "PUT" : "POST";
+    e.preventDefault();
+    const isEdit = !!editingCarId;
+    const url = isEdit ? `${API_BASE}/vehicles/${editingCarId}` : `${API_BASE}/vehicles`;
+    const method = isEdit ? "PUT" : "POST";
 
-  const formData = new FormData();
-  formData.append("id", carForm.id);
-  formData.append("model", carForm.model);
-  formData.append("plate", carForm.plate);
-  formData.append("seats", carForm.seats);
-  formData.append("status", carForm.status);
-  formData.append("image", carForm.image); 
-  
-  formData.append("act_number", carForm.act_number || "");
-  formData.append("act_expiry_date", carForm.act_expiry_date || "");
-  
-  if (selectedFile) {
-    formData.append("imageFile", selectedFile);
+    const formData = new FormData();
+    formData.append("id", carForm.id);
+    formData.append("model", carForm.model);
+    formData.append("plate", carForm.plate);
+    formData.append("seats", carForm.seats);
+    formData.append("status", carForm.status);
+    formData.append("image", carForm.image || ""); 
+    
+    formData.append("act_number", carForm.act_number || "");
+    formData.append("act_expiry_date", carForm.act_expiry_date || "");
+    
+    if (selectedFile) {
+      formData.append("imageFile", selectedFile);
+    }
+
+    const res = await fetch(url, { method, body: formData });
+
+    if (res.ok) {
+      alert(isEdit ? "🎯 แก้ไขสเปครถและบันทึกรูปสำเร็จ!" : "✨ ลงทะเบียนยานพาหนะสำเร็จ!");
+      setSelectedFile(null);
+      closeCarModal();
+      fetchVehicles();
+    } else {
+      const errData = await res.json();
+      alert(errData.message || "เกิดข้อผิดพลาดในการบันทึกข้อมูล");
+    }
   }
-
-  const res = await fetch(url, { method, body: formData });
-
-  if (res.ok) {
-    alert(isEdit ? "🎯 แก้ไขสเปครถและข้อมูล พ.ร.บ. สำเร็จ!" : "✨ ลงทะเบียนยานพาหนะสำเร็จ!");
-    closeCarModal();
-    fetchVehicles();
-  } else {
-    const errData = await res.json();
-    alert(errData.message || "เกิดข้อผิดพลาดในการบันทึกข้อมูล");
-  }
-}
 
   async function handleDeleteVehicle(id) {
     if (!confirm(`ยืนยันลบรถรหัส ${id} ออกจากระบบ?`)) return;
-    const res = await fetch(`http://localhost:5000/api/vehicles/${id}`, { method: "DELETE" });
+    const res = await fetch(`${API_BASE}/vehicles/${id}`, { method: "DELETE" });
     if (res.ok) { fetchVehicles(); alert("ลบสำเร็จ"); }
   }
 
   async function handleStatusChange(car, nextStatus) {
-  try {
-    // 🟢 เปลี่ยนมาใช้ API_BASE และส่งข้อมูลครบถ้วนรวมถึง พ.ร.บ.
-    const res = await fetch(`${API_BASE}/vehicles/${car.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: car.model,
-        plate: car.plate,
-        seats: car.seats,
-        image: car.image,
-        status: nextStatus,
-        act_number: car.act_number || "",
-        act_expiry_date: car.act_expiry_date ? car.act_expiry_date.split("T")[0] : ""
-      })
-    });
+    try {
+      const res = await fetch(`${API_BASE}/vehicles/${car.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: car.model,
+          plate: car.plate,
+          seats: car.seats,
+          image: car.image,
+          status: nextStatus,
+          act_number: car.act_number || "",
+          act_expiry_date: car.act_expiry_date ? car.act_expiry_date.split("T")[0] : ""
+        })
+      });
 
-    if (res.ok) {
-      alert(`🎯 สลับสถานะรถรหัส ${car.id.toUpperCase()} เรียบร้อย!`);
-      fetchVehicles(); 
-    } else {
-      const err = await res.json();
-      alert(`❌ เปลี่ยนสถานะไม่สำเร็จ: ${err.message || err.error}`);
+      if (res.ok) {
+        alert(`🎯 สลับสถานะรถรหัส ${car.id.toUpperCase()} เรียบร้อย!`);
+        fetchVehicles(); 
+      } else {
+        const err = await res.json();
+        alert(`❌ เปลี่ยนสถานะไม่สำเร็จ: ${err.message || err.error}`);
+      }
+    } catch (err) { 
+      console.error("Error updating status:", err); 
+      alert("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์หลังบ้านได้");
     }
-  } catch (err) { 
-    console.error("Error updating status:", err); 
-    alert("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์หลังบ้านได้");
   }
-}
 
   function startEditCar(car) {
     setEditingCarId(car.id);
@@ -203,7 +211,7 @@ export default function AdminManagement({ onNavigate }) {
   // ==================== [ API: ประวัติการจอง & การลบ ] ====================
   async function fetchAllBookings() {
     try {
-      const res = await fetch("http://localhost:5000/api/bookings?role=admin");
+      const res = await fetch(`${API_BASE}/bookings?role=admin`);
       if (res.ok) {
         const data = await res.json();
         setBookings(data);
@@ -217,7 +225,7 @@ export default function AdminManagement({ onNavigate }) {
   async function handleDeleteSingleBooking(id) {
     if (!confirm(`ยืนยันลบประวัติการจองรหัส BOOK-${id}?`)) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/bookings/${id}`, { method: "DELETE" });
+      const res = await fetch(`${API_BASE}/bookings/${id}`, { method: "DELETE" });
       if (res.ok) {
         alert("🗑️ ลบประวัติการจองเรียบร้อยแล้ว");
         fetchAllBookings();
@@ -230,7 +238,7 @@ export default function AdminManagement({ onNavigate }) {
     if (!confirm(`ยืนยันลบประวัติการจองที่เลือกไว้จำนวน ${selectedBookingIds.length} รายการ?`)) return;
 
     try {
-      const res = await fetch("http://localhost:5000/api/bookings/delete-batch", {
+      const res = await fetch(`${API_BASE}/bookings/delete-batch`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids: selectedBookingIds })
@@ -355,7 +363,15 @@ export default function AdminManagement({ onNavigate }) {
                 <tr key={car.id}>
                   <td>
                     {car.image ? (
-                      <img src={car.image} alt={car.model} className="vehicle-img" />
+                      <img 
+                        src={getImageUrl(car.image)} 
+                        alt={car.model} 
+                        className="vehicle-img"
+                        onError={(e) => {
+                          e.target.onerror = null; 
+                          e.target.src = "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=300";
+                        }}
+                      />
                     ) : (
                       <div className="vehicle-img-placeholder">ไม่มีรูป</div>
                     )}
@@ -540,7 +556,7 @@ export default function AdminManagement({ onNavigate }) {
         </div>
       )}
 
-      {/* 🟢 POPUP MODAL: ฟอร์มรถยนต์ (เพิ่มช่องเลข พ.ร.บ. และ วันหมดอายุ พ.ร.บ.) */}
+      {/* 🟢 POPUP MODAL: ฟอร์มรถยนต์ */}
       {isCarModalOpen && (
         <div className="modal-overlay" style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
           <div className="fg-rise" style={{ backgroundColor: "#fff", padding: "24px", borderRadius: "12px", width: "90%", maxWidth: "550px", boxShadow: "0 10px 25px rgba(0,0,0,0.15)", maxHeight: "90vh", overflowY: "auto" }}>
@@ -573,13 +589,13 @@ export default function AdminManagement({ onNavigate }) {
                 <input type="number" value={carForm.seats} onChange={e => setCarForm({...carForm, seats: parseInt(e.target.value) || 0})} required style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #d1d5db", boxSizing: "border-box" }} />
               </div>
 
-              {/* 🟢 เพิ่มฟิลด์เลข พ.ร.บ. */}
+              {/* ฟิลด์เลข พ.ร.บ. */}
               <div>
                 <label style={{ fontSize: "13px", fontWeight: "600", display: "block", marginBottom: "4px", color: "#1e3a8a" }}>เลขที่ พ.ร.บ.</label>
                 <input type="text" value={carForm.act_number} onChange={e => setCarForm({...carForm, act_number: e.target.value})} placeholder="เช่น ACT-998877" style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #d1d5db", boxSizing: "border-box" }} />
               </div>
 
-              {/* 🟢 เพิ่มฟิลด์วันหมดอายุ พ.ร.บ. */}
+              {/* ฟิลด์วันหมดอายุ พ.ร.บ. */}
               <div style={{ gridColumn: "1 / -1" }}>
                 <label style={{ fontSize: "13px", fontWeight: "600", display: "block", marginBottom: "4px", color: "#1e3a8a" }}>วันหมดอายุ พ.ร.บ.</label>
                 <input type="date" value={carForm.act_expiry_date} onChange={e => setCarForm({...carForm, act_expiry_date: e.target.value})} style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #d1d5db", boxSizing: "border-box" }} />
