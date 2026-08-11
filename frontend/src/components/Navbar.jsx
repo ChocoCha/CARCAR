@@ -1,9 +1,13 @@
 import { useState, useRef, useEffect } from "react";
-import { LogOut, ChevronDown, Menu, LayoutGrid, CalendarCheck, CalendarDays, ShieldAlert, FileText } from "lucide-react";
+// 🟢 เพิ่ม User เข้ามาใน Lucide Icons
+import { LogOut, ChevronDown, Menu, LayoutGrid, CalendarCheck, CalendarDays, ShieldAlert, FileText, User } from "lucide-react";
 
 export default function Navbar({ onNavigate }) {
-  const currentUser = localStorage.getItem("borrowerName") || "ผู้ใช้งานระบบ";
+  const API_BASE = `http://${window.location.hostname}:5000/api`;
+  
+  const [currentUser, setCurrentUser] = useState(localStorage.getItem("borrowerName") || "ผู้ใช้งานระบบ");
   const userRole = localStorage.getItem("userRole") || "employee";
+  const borrowerEmpId = localStorage.getItem("borrowerEmpId");
   const isAdmin = userRole.trim().toLowerCase() === "admin";
 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -14,7 +18,26 @@ export default function Navbar({ onNavigate }) {
 
   const [warningCount, setWarningCount] = useState(0);
 
-  const API_BASE = `http://${window.location.hostname}:5000/api`;
+  useEffect(() => {
+    fetchLatestUserProfile();
+  }, []);
+
+  async function fetchLatestUserProfile() {
+    if (!borrowerEmpId) return;
+    try {
+      const res = await fetch(`${API_BASE}/employees`);
+      if (res.ok) {
+        const employees = await res.json();
+        const me = employees.find(emp => emp.id?.toString().trim().toUpperCase() === borrowerEmpId.toString().trim().toUpperCase());
+        if (me && me.name) {
+          setCurrentUser(me.name);
+          localStorage.setItem("borrowerName", me.name);
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching user profile:", err);
+    }
+  }
 
   useEffect(() => {
     if (isAdmin) checkActExpiry();
@@ -86,7 +109,7 @@ export default function Navbar({ onNavigate }) {
           {/* Dropdown เมนูนำทาง + ออกจากระบบ รวมในสามขีดฝั่งซ้าย */}
           {isMobileMenuOpen && (
             <div className="mobile-dropdown-menu" style={{ left: 0, right: "auto" }}>
-              <div style={{ padding: "8px 12px", fontSize: "12px", fontWeight: "bold", color: "var(--stone)", borderBottom: "1px solid var(--line)", marginBottom: "4px" }}>
+              <div style={{ padding: "8px 12px", fontSize: "12px", fontWeight: "bold", color: "var(--sidebar-text-dim)", borderBottom: "1px solid var(--sidebar-line)", marginBottom: "4px" }}>
                 👤 {currentUser}
               </div>
 
@@ -102,7 +125,7 @@ export default function Navbar({ onNavigate }) {
 
               {isAdmin && (
                 <>
-                  <div style={{ borderTop: "1px dashed var(--line)", margin: "6px 0" }} />
+                  <div style={{ borderTop: "1px dashed var(--sidebar-line)", margin: "6px 0" }} />
                   <button type="button" onClick={() => handleMenuClick("act-management")} className="dropdown-item text-red">
                     <div style={{ display: "flex", alignItems: "center", gap: "10px", width: "100%", justifyContent: "space-between" }}>
                       <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -117,7 +140,7 @@ export default function Navbar({ onNavigate }) {
                 </>
               )}
 
-              <div style={{ borderTop: "1px solid var(--line)", margin: "6px 0" }} />
+              <div style={{ borderTop: "1px solid var(--sidebar-line)", margin: "6px 0" }} />
               <button type="button" onClick={handleLogout} className="dropdown-item text-red">
                 <LogOut size={16} /> ออกจากระบบ
               </button>
@@ -134,11 +157,12 @@ export default function Navbar({ onNavigate }) {
             className="navbar-user"
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
           >
-            <div className="navbar-user-avatar" style={{ display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", color: "var(--ink)" }}>
-              {currentUser.charAt(0)}
+            {/* 🟢 เปลี่ยนเป็นไอคอน User แทนสีส้ม */}
+            <div className="navbar-user-avatar">
+              <User size={15} />
             </div>
             <span className="navbar-user-name">{currentUser}</span>
-            <ChevronDown size={14} style={{ color: "var(--stone)", transform: isDropdownOpen ? "rotate(180deg)" : "none", transition: "0.2s" }} />
+            <ChevronDown size={14} style={{ color: "var(--sidebar-text-dim)", transform: isDropdownOpen ? "rotate(180deg)" : "none", transition: "0.2s" }} />
           </button>
 
           {isDropdownOpen && (

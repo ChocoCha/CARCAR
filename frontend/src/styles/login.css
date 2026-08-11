@@ -15,6 +15,7 @@
   --fg-ok: #393f04;
   --fg-mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
   --fg-sans: 'Inter', -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  --fg-page-dark: linear-gradient(135deg, #17150e 0%, #100f0a 100%);
 }
 
 .fg-page {
@@ -23,26 +24,31 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background:
-    radial-gradient(circle at 20% 15%, rgba(245, 197, 24, 0.08), transparent 45%),
-    radial-gradient(circle at 85% 80%, rgba(20, 19, 12, 0.05), transparent 45%),
-    var(--fg-bg);
   position: relative;
   padding: 24px;
   font-family: var(--fg-sans);
   overflow: hidden;
+  background:
+    radial-gradient(circle at 18% 15%, rgba(245, 197, 24, 0.12), transparent 45%),
+    radial-gradient(circle at 82% 85%, rgba(163, 128, 12, 0.14), transparent 45%),
+    linear-gradient(rgba(245, 197, 24, 0.045) 1px, transparent 1px) 0 0 / 42px 42px,
+    linear-gradient(90deg, rgba(245, 197, 24, 0.045) 1px, transparent 1px) 0 0 / 42px 42px,
+    var(--fg-page-dark);
 }
 
-.fg-page::before {
+/* เพชรมัวๆ ลอยมุมจอ — โทนอำพันเดียวกับแบรนด์มาร์ก */
+.fg-page::before,
+.fg-page::after {
   content: "";
   position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(rgba(20, 19, 12, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(20, 19, 12, 0.05) 1px, transparent 1px);
-  background-size: 42px 42px;
+  clip-path: polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%);
+  background: conic-gradient(from 210deg, var(--fg-amber-bright), var(--fg-amber), var(--fg-amber-dim), var(--fg-amber));
+  opacity: 0.10;
   pointer-events: none;
-} 
+  z-index: 0;
+}
+.fg-page::before { width: 280px; height: 280px; top: -90px; left: -70px; transform: rotate(12deg); }
+.fg-page::after { width: 190px; height: 190px; bottom: -60px; right: -50px; transform: rotate(-18deg); }
 
 .fg-container { position: relative; width: 100%; max-width: 400px; z-index: 1; }
 
@@ -110,10 +116,10 @@
 
 .fg-eyebrow { font-family: "Helvetica Neue", Arial, sans-serif; font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--fg-amber-dim); margin: 0 0 8px; }
 .fg-title { font-size: 31px; font-weight: 700; color: var(--fg-ink); margin: 0 0 6px; letter-spacing: -0.01em; }
-.fg-subtitle { font-size: 13px; font-weight: 500; color: #f7f7f6; margin: 0 0 22px; line-height: 1.5; opacity: 80%;  }
+.fg-subtitle { font-size: 13px; font-weight: 500; color: #f7f7f6; margin: 0 0 22px; line-height: 1.5; opacity: 80%; }
 
 .fg-form { display: flex; flex-direction: column; gap: 16px; }
-.fg-field-group { display: flex; flex-direction: column; gap: 7px; font-weight: 700; color: #ffffff;  }
+.fg-field-group { display: flex; flex-direction: column; gap: 7px; font-weight: 700; color: #ffffff; }
 .fg-label { font-family: "Helvetica Neue", Arial, sans-serif; font-size: 10.5px; font-weight: 700; color: #ffffff; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; }
 
 .fg-input-wrap {

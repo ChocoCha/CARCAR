@@ -1,20 +1,46 @@
-/* global.css — รวมสไตล์พื้นฐาน Navbar & Sidebar */
+/* global.css — รวมสไตล์พื้นฐาน Navbar & Sidebar
+   Theme: System Prime — black / chrome / gold-orange / white
+   ปรับจากโลโก้บริษัท: พื้นดำ + แถบโครเมี่ยม + ตัวอักษร P ไล่สีทอง-ส้ม + เพชรหลากสี
+*/
+
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&display=swap');
 
 :root {
   --bg: #faf9f5;
   --surface: #ffffff;
-  --ink: #232219;
+  --ink: #17150f;
   --ink-soft: #4a473b;
-  --amber: #f5b400;
-  --amber-dim: #c9950a;
   --stone: #8a8474;
   --line: #e6e2d6;
   --panel-2: #f3f1e9;
+
+  /* System Prime palette — pulled from the logo */
+  --gold: #f5b400;
+  --gold-deep: #c9950a;
+  --orange: #e8590c;
+  --black-deep: #0d0c08;
+  --black-soft: #1f1e17;
+  --chrome-1: #f4f4f4;
+  --chrome-2: #9a9a9a;
+
+  --gradient-gold: linear-gradient(135deg, #ffd35c 0%, #f5b400 45%, #e8590c 100%);
+  --gradient-dark: linear-gradient(135deg, #0d0c08 0%, #262418 100%);
+  --gradient-chrome: linear-gradient(90deg, var(--chrome-1) 0%, var(--chrome-2) 50%, var(--chrome-1) 100%);
+
+  /* Aliases — vehicle.css / navbar.css / sidebar.css reference these older names.
+     Point them at the new palette so every file stays in sync from one source. */
+  --amber: var(--gold);
+  --amber-dim: var(--gold-deep);
+  --green: #1f9d63;
+  --green-soft: #e3f6ec;
+  --red-soft: #fbe4de;
+
   --sidebar-bg: #1f1e17;
   --sidebar-line: #33321f;
   --sidebar-text: #cfccbd;
   --sidebar-text-dim: #8a8672;
   --red: #c1503a;
+  --font-display: "Sora", "Helvetica Neue", Arial, sans-serif;
 
   font-family: "Helvetica Neue", Arial, sans-serif;
 }
@@ -23,10 +49,182 @@
 html, body, #root { height: 100%; margin: 0; padding: 0; }
 body { background: var(--bg); color: var(--ink); }
 
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+}
+
 /* Layout Structure */
 .app-layout { display: flex; min-height: 100vh; width: 100%; }
 .main-wrapper { flex: 1; display: flex; flex-Direction: column; min-width: 0; }
 .main-content { padding: 24px; flex: 1; }
+
+/* ==================== HERO BANNER (System Prime signature) ==================== */
+.hero-banner {
+  position: relative;
+  overflow: hidden;
+  background: var(--gradient-dark);
+  border-radius: 18px;
+  padding: 28px 32px;
+  margin-bottom: 24px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+  box-shadow: 0 12px 30px -10px rgba(13, 12, 8, 0.5);
+  animation: heroRise 0.5s ease both;
+}
+
+/* chrome divider echoing the logo's metallic stripe */
+.hero-banner::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 3px;
+  background: var(--gradient-chrome);
+  opacity: 0.55;
+}
+
+/* faceted diamond motif, cropped at the edge like the logo's gem icon */
+.hero-banner-facet {
+  position: absolute;
+  width: 190px;
+  height: 190px;
+  right: -55px;
+  top: -60px;
+  clip-path: polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%);
+  background: conic-gradient(from 210deg, #ffd35c, #f5b400, #e8590c, #d6266f, #2e7bd6, #ffd35c);
+  opacity: 0.16;
+  transform: rotate(8deg);
+  pointer-events: none;
+}
+.hero-banner-facet.small {
+  width: 90px;
+  height: 90px;
+  right: 70px;
+  top: auto;
+  bottom: -40px;
+  opacity: 0.12;
+  transform: rotate(-14deg);
+}
+
+.hero-banner-text { position: relative; z-index: 1; }
+.hero-banner-eyebrow {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin: 0 0 6px 0;
+}
+.hero-banner-title {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  margin: 0;
+  color: #fff;
+}
+.hero-banner-title strong {
+  background: var(--gradient-gold);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.hero-banner-sub {
+  margin: 6px 0 0 0;
+  font-size: 13px;
+  color: var(--sidebar-text);
+}
+
+.hero-banner-stats {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.hero-stat-chip {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(6px);
+  border-radius: 12px;
+  padding: 10px 18px;
+  min-width: 92px;
+  text-align: center;
+}
+.hero-stat-value {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--gold);
+  line-height: 1.1;
+}
+.hero-stat-label {
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--sidebar-text-dim);
+  margin-top: 2px;
+}
+
+@keyframes heroRise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ==================== Buttons (theme-matched) ==================== */
+.btn-gold,
+.btn-dark,
+.btn-outline-gold {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: auto;
+}
+
+.btn-gold {
+  background: var(--gradient-gold);
+  color: var(--black-deep);
+  border: none;
+  padding: 10px 26px;
+  border-radius: 8px;
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(232, 89, 12, 0.3);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.btn-gold:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(232, 89, 12, 0.42); }
+
+.btn-dark {
+  background: var(--gradient-dark);
+  color: #fff;
+  border: none;
+  padding: 8px 22px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+.btn-dark:hover { opacity: 0.88; }
+
+.btn-outline-gold {
+  background: #fff;
+  color: var(--ink);
+  border: 1.5px solid var(--line);
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.btn-outline-gold:hover { border-color: var(--gold-deep); color: var(--gold-deep); }
 
 /* Navbar Dropdowns */
 .mobile-menu-btn { display: none; }
@@ -74,7 +272,7 @@ body { background: var(--bg); color: var(--ink); }
 }
 .dropdown-item:hover { background: var(--panel-2); }
 .dropdown-item.text-red { color: var(--red); }
-.dropdown-item.text-amber { color: var(--amber-dim); }
+.dropdown-item.text-amber { color: var(--gold-deep); }
 
 .badge-red {
   background: var(--red);
@@ -91,6 +289,11 @@ body { background: var(--bg); color: var(--ink); }
   .mobile-menu-btn { display: flex !important; }
   .navbar-user-name { display: none !important; }
   .main-content { padding: 16px !important; }
+
+  .hero-banner { padding: 20px; flex-direction: column; align-items: flex-start; }
+  .hero-banner-title { font-size: 19px; }
+  .hero-banner-stats { width: 100%; }
+  .hero-stat-chip { flex: 1; min-width: 0; padding: 8px 10px; }
 }
 .mobile-menu-wrapper {
   position: relative;
@@ -107,4 +310,285 @@ body { background: var(--bg); color: var(--ink); }
     box-sizing: border-box !important;
     overflow-x: hidden !important;
   }
+}
+/* ==================== BOOKING SPLIT MODAL ====================
+   วางต่อท้ายไฟล์ global.css เดิม (ที่ส่งให้ก่อนหน้านี้) ที่มี --gradient-dark,
+   --gradient-gold, --font-display, .btn-gold, .btn-outline-gold อยู่แล้ว
+*/
+
+/* ==================== BOOKING SPLIT MODAL ==================== */
+.booking-fullscreen-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(10, 9, 6, 0.75);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 22px;
+  animation: heroRise 0.35s ease both;
+}
+
+.booking-split-card {
+  width: 100%;
+  height: 100%;
+  max-width: 1240px;
+  max-height: 800px;
+  background: #000;
+  border-radius: 22px;
+  overflow: hidden;
+  display: flex;
+  box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.6);
+}
+
+/* ---- Left: image panel ---- */
+.booking-panel-image {
+  flex: 1.4;
+  position: relative;
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 30px;
+  color: #fff;
+  min-width: 0;
+}
+
+.booking-panel-image::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.15) 50%, rgba(0, 0, 0, 0.4) 100%);
+}
+.booking-image-topbar,
+.booking-image-bottom { position: relative; z-index: 1; }
+
+.booking-brand { display: flex; align-items: center; gap: 8px; font-family: var(--font-display); font-weight: 700; font-size: 13px; letter-spacing: 0.04em; }
+.booking-brand-mark {
+  width: 16px; height: 16px;
+  background: var(--gradient-gold);
+  clip-path: polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%);
+}
+.booking-image-caption { font-size: 11px; opacity: 0.75; margin-top: 2px; }
+
+.booking-model-name { font-family: var(--font-display); font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.85; margin-bottom: 4px; }
+.booking-model-big-stat { font-family: var(--font-display); font-weight: 800; font-size: clamp(40px, 6vw, 74px); line-height: 0.95; letter-spacing: -0.02em; }
+.booking-model-big-stat span { font-size: 0.4em; font-weight: 700; margin-left: 6px; opacity: 0.85; }
+
+/* ---- Right: dark spec/booking panel ---- */
+.booking-panel-dark {
+  width: 400px;
+  flex-shrink: 0;
+  background: var(--gradient-dark);
+  color: #fff;
+  padding: 26px 28px;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+.booking-panel-close { align-self: flex-end; background: none; border: none; color: #cfccbd; cursor: pointer; padding: 4px; }
+
+.booking-title-row { display: flex; justify-content: space-between; align-items: flex-start; margin-top: 18px; gap: 12px; }
+.booking-title-label { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--sidebar-text-dim); margin-bottom: 4px; }
+.booking-title-value { font-family: var(--font-display); font-weight: 800; font-size: 22px; }
+.booking-title-value.gold { color: var(--gold); }
+
+.booking-form-dark { margin-top: 26px; display: flex; flex-direction: column; gap: 16px; }
+.booking-field label { display: block; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--sidebar-text-dim); margin-bottom: 6px; }
+.booking-field input[type="date"] {
+  width: 100%; background: transparent; border: none; border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+  color: #fff; font-size: 18px; font-family: var(--font-display); padding: 8px 0; outline: none;
+}
+.booking-field input[type="date"]:focus { border-bottom-color: var(--gold); }
+.booking-field input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
+
+.booking-specs-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 22px; padding-top: 18px; border-top: 1px solid rgba(255, 255, 255, 0.12); }
+.booking-spec-label { font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--sidebar-text-dim); margin-bottom: 5px; }
+.booking-spec-value { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 5px; }
+.booking-spec-value.warn { color: #ff8a65; }
+
+.booking-actions-row { display: flex; gap: 10px; margin-top: 24px; }
+.booking-actions-row .btn-outline-gold { background: transparent; color: #fff; border-color: rgba(255, 255, 255, 0.25); }
+.booking-actions-row .btn-outline-gold:hover { border-color: var(--gold); color: var(--gold); }
+.booking-actions-row .btn-gold { flex: 1; }
+
+.booking-footer-nav { margin-top: auto; padding-top: 22px; display: flex; justify-content: space-between; align-items: center; }
+.booking-nav-arrows { display: flex; gap: 8px; }
+.booking-icon-btn {
+  width: 38px; height: 38px; border-radius: 999px; display: flex; align-items: center; justify-content: center;
+  background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.16); color: #fff; cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.booking-icon-btn:hover { border-color: var(--gold); color: var(--gold); }
+.booking-icon-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+@media (max-width: 900px) {
+  .booking-fullscreen-overlay { padding: 0; }
+  .booking-split-card { flex-direction: column; height: 100%; max-height: none; border-radius: 16px; overflow-y: auto; }
+  .booking-panel-image { min-height: 260px; }
+  .booking-panel-dark { width: 100%; }
+}
+
+/* ==================== HERO BANNER V2 — split photo / stats panel ==================== */
+.hero-banner-v2 {
+  position: relative;
+  display: flex;
+  min-height: 340px;
+  border-radius: 20px;
+  overflow: hidden;
+  margin-bottom: 24px;
+  box-shadow: 0 20px 40px -15px rgba(13, 12, 8, 0.45);
+  animation: heroRise 0.6s ease both;
+}
+
+.hero-photo-side {
+  flex: 1.6;
+  position: relative;
+  background-image: url("https://img1.pic.in.th/images/515407813_1540523703989335_9203987289831334387_n.png");
+  background-size: cover;
+  background-position: center 35%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 26px 30px;
+  min-width: 0;
+}
+.hero-photo-side::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(100deg, rgba(13,12,8,.92) 0%, rgba(13,12,8,.55) 42%, rgba(13,12,8,.15) 75%, rgba(13,12,8,0) 100%),
+    linear-gradient(to top, rgba(13,12,8,.85) 0%, rgba(13,12,8,0) 55%);
+}
+.hero-photo-top, .hero-photo-bottom { position: relative; z-index: 1; color: #fff; }
+
+.hero-brand-mark { display: flex; align-items: center; gap: 8px; font-family: var(--font-display); font-weight: 700; font-size: 12.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--chrome-1); opacity: 0.9; }
+.hero-brand-gem { width: 14px; height: 14px; background: var(--gradient-gold); clip-path: polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%); flex-shrink: 0; }
+
+.hero-eyebrow { font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold); margin: 0 0 8px 0; }
+.hero-welcome { font-family: var(--font-display); font-weight: 800; font-size: clamp(26px, 3.4vw, 40px); margin: 0; letter-spacing: -0.01em; }
+.hero-welcome strong { background: var(--gradient-gold); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.hero-sub { margin: 8px 0 0 0; font-size: 13.5px; color: var(--chrome-1); opacity: 0.75; max-width: 380px; }
+
+.hero-stats-side {
+  width: 300px;
+  flex-shrink: 0;
+  background: var(--gradient-dark);
+  color: #fff;
+  padding: 24px 26px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+.hero-stats-side::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--gradient-chrome); opacity: 0.5; }
+.hero-stats-header { font-family: var(--font-display); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--sidebar-text-dim); margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,.12); }
+
+.hero-stat-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,.08); }
+.hero-stat-row:last-of-type { border-bottom: none; }
+.hero-stat-gem { width: 9px; height: 9px; flex-shrink: 0; background: var(--gradient-gold); clip-path: polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%); }
+.hero-stat-row.warn .hero-stat-gem { background: var(--red); }
+.hero-stat-num { font-family: var(--font-display); font-weight: 800; font-size: 22px; color: #fff; line-height: 1; }
+.hero-stat-row.warn .hero-stat-num { color: #ff8a65; }
+.hero-stat-lbl { font-size: 11px; color: var(--sidebar-text-dim); margin-top: 3px; letter-spacing: 0.02em; }
+
+.hero-stats-footer { margin-top: auto; padding-top: 16px; }
+.hero-stats-link { display: inline-flex; align-items: center; gap: 6px; background: none; border: none; color: var(--gold); font-family: var(--font-display); font-weight: 700; font-size: 12.5px; cursor: pointer; padding: 0; }
+.hero-stats-link:hover { color: var(--orange); }
+
+@media (max-width: 900px) {
+  .hero-banner-v2 { flex-direction: column; min-height: auto; }
+  .hero-photo-side { min-height: 220px; }
+  .hero-stats-side { width: 100%; flex-direction: row; flex-wrap: wrap; }
+  .hero-stat-row { flex: 1 1 45%; border-bottom: none; border-right: 1px solid rgba(255,255,255,.08); padding-right: 10px; }
+  .hero-stats-header { width: 100%; }
+  .hero-stats-footer { width: 100%; margin-top: 14px; }
+}
+
+/* ==================== NAVBAR (THEME: MATCH SIDEBAR) ==================== */
+.navbar {
+  background: var(--sidebar-bg); /* #1f1e17 */
+  border-bottom: 1px solid var(--sidebar-line); /* #33321f */
+  height: 64px;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(13, 12, 8, 0.25);
+}
+
+/* ปุ่มและตัวอักษรใน Navbar */
+.navbar-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 6px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.navbar-user:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--gold);
+}
+
+.navbar-user-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--gold); /* สีไอคอนผู้ใช้เป็นสีทอง */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.navbar-user-name {
+  color: var(--sidebar-text);
+  font-weight: 600;
+  font-size: 13.5px;
+}
+
+.navbar-icon-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--sidebar-text);
+  padding: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.navbar-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--gold);
+}
+
+/* Dropdown เมนูเมื่อคลิกโปรไฟล์/สามขีด */
+.user-dropdown-menu,
+.mobile-dropdown-menu {
+  background: var(--black-soft) !important;
+  border: 1px solid var(--sidebar-line) !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5) !important;
+}
+
+.dropdown-item {
+  color: var(--sidebar-text) !important;
+}
+
+.dropdown-item:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #fff !important;
 }

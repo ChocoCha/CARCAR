@@ -1,7 +1,7 @@
 /* navbar.css */
 
 .navbar {
-  position: relative;   /* เพิ่ม */
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -11,9 +11,12 @@
   border-bottom: 1px solid var(--line);
   flex-wrap: wrap;
   z-index: 9999;
+  color: #1f1e17;
+  
 }
 
 .navbar-title {
+  font-family: var(--font-display);
   font-size: 21px;
   font-weight: 700;
   color: var(--ink);
@@ -46,8 +49,8 @@
 }
 
 .navbar-icon-btn:hover {
-  border-color: var(--amber-dim);
-  color: var(--amber-dim);
+  border-color: var(--gold-deep);
+  color: var(--gold-deep);
 }
 
 .navbar-user {
@@ -66,7 +69,8 @@
   height: 26px;
   border-radius: 50%;
   object-fit: cover;
-  background: var(--panel-2);
+  background: var(--gradient-gold);
+  color: var(--black-deep);
 }
 
 .navbar-user-name {
@@ -97,12 +101,13 @@
 }
 
 .btn-primary {
-  background: var(--amber);
-  color: var(--ink);
+  background: var(--gradient-gold);
+  color: var(--black-deep);
+  font-weight: 700;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: var(--amber-dim);
+  box-shadow: 0 4px 12px rgba(232, 89, 12, 0.32);
 }
 
 .btn-outline {
@@ -112,8 +117,8 @@
 }
 
 .btn-outline:hover:not(:disabled) {
-  border-color: var(--amber-dim);
-  color: var(--amber-dim);
+  border-color: var(--gold-deep);
+  color: var(--gold-deep);
 }
 
 .btn-ghost {
@@ -146,7 +151,7 @@
 .mobile-dropdown-menu {
   position: absolute;
   top: calc(100% + 8px);
-  left: 0;                /* 🟢 ให้เด้งเมนูออกมาทางฝั่งซ้าย */
+  left: 0;
   right: auto;
   min-width: 200px;
   background: var(--surface);

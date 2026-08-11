@@ -62,10 +62,25 @@ export default function ActManagement({ onNavigate }) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
+  // 🟢 สรุปจำนวนรถแยกตามสถานะ พ.ร.บ. (คำนวณฝั่ง frontend ล้วน ๆ เพื่อแสดงแถบสรุปด้านบน)
+  const summary = vehicles.reduce((acc, v) => {
+    if (!v.act_expiry_date) { acc.none += 1; return acc; }
+    const expDate = new Date(v.act_expiry_date);
+    expDate.setHours(0, 0, 0, 0);
+    const diffDays = Math.ceil((expDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDays <= 0) acc.expired += 1;
+    else if (diffDays <= 90) acc.warning += 1;
+    else acc.ok += 1;
+    return acc;
+  }, { expired: 0, warning: 0, ok: 0, none: 0 });
+
   return (
-    <MainLayout activePage="act-management" onNavigate={onNavigate} title="📄 จัดการข้อมูล พ.ร.บ. ยานพาหนะ" subtitle="ตรวจสอบวันหมดอายุ พ.ร.บ. และบันทึกการต่ออายุ">
+    <MainLayout activePage="act-management" onNavigate={onNavigate} title=" จัดการข้อมูล พ.ร.บ. รถยนต์" subtitle="ตรวจสอบวันหมดอายุ พ.ร.บ. และบันทึกการต่ออายุ">
+
       
+
       <div className="admin-table">
+        <h3 className="admin-section-title">รายการรถยนต์ทั้งหมด</h3>
         <table className="act-table">
           <thead>
             <tr>
@@ -89,7 +104,7 @@ export default function ActManagement({ onNavigate }) {
 
                 const diffTime = expDate.getTime() - today.getTime();
                 diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                
+
                 approxMonths = (diffDays / 30).toFixed(1);
                 if (approxMonths.endsWith('.0')) {
                   approxMonths = Math.round(diffDays / 30);
@@ -102,46 +117,51 @@ export default function ActManagement({ onNavigate }) {
                 }
               }
 
+              // 🟢 สัดส่วนแถบความคืบหน้า (เทียบระยะ 1 ปี) ใช้แสดงผลอย่างเดียว ไม่กระทบข้อมูลจริง
+              const progressPct = diffDays === null ? 0 : Math.min(100, Math.max(0, (diffDays / 365) * 100));
+
               return (
-                <tr key={v.id} style={{ backgroundColor: isExpired ? "#FEF2F2" : isWarning ? "#FFFBEB" : "transparent" }}>
-                  <td>
+                <tr key={v.id} className={`act-row ${isExpired ? "is-expired" : isWarning ? "is-warning" : ""}`}>
+                  <td data-label="รูป">
                     {/* 🟢 แสดงผลรูปภาพผ่าน getImageUrl */}
-                    <img 
-                      src={getImageUrl(v.image)} 
-                      alt={v.model} 
-                      className="vehicle-img" 
+                    <img
+                      src={getImageUrl(v.image)}
+                      alt={v.model}
+                      className="vehicle-img"
                       onError={(e) => {
                         e.target.onerror = null;
                         e.target.src = "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=300";
                       }}
                     />
                   </td>
-                  <td>
-                    <div style={{ fontWeight: "bold", color: "#111827" }}>{v.model}</div>
-                    <div style={{ fontSize: "11px", color: "#6b7280" }}>{v.plate}</div>
+                  <td data-label="รุ่นรถ / ทะเบียน">
+                    <div className="act-model-name">{v.model}</div>
+                    <div className="act-model-plate">{v.plate}</div>
                   </td>
-                  <td style={{ fontWeight: "600", color: "#1e3a8a" }}>{v.act_number || "ยังไม่ได้ระบุ"}</td>
-                  <td style={{ textAlign: "center", fontWeight: "500" }}>
+                  <td data-label="เลข พ.ร.บ." className="act-number-cell">{v.act_number || "ยังไม่ได้ระบุ"}</td>
+                  <td data-label="วันหมดอายุ พ.ร.บ." className="act-date-cell">
                     {v.act_expiry_date ? new Date(v.act_expiry_date).toLocaleDateString('th-TH') : "-"}
                   </td>
-                  
+
                   {/* สถานะ พ.ร.บ. */}
-                  <td style={{ textAlign: "center" }}>
+                  <td data-label="สถานะ" style={{ textAlign: "center" }}>
                     {!v.act_expiry_date ? (
-                      <span style={{ fontSize: "11px", padding: "3px 8px", backgroundColor: "#f3f4f6", color: "#6b7280", borderRadius: "999px" }}>ไม่มีข้อมูล</span>
+                      <span className="act-status-pill is-none">ไม่มีข้อมูล</span>
                     ) : isExpired ? (
-                      <span style={{ fontSize: "10px", padding: "3px 8px", backgroundColor: "#DC2626", color: "#fff", borderRadius: "999px", fontWeight: "bold" }}>
-                        ❌ หมดอายุแล้ว {diffDays < 0 ? `(${Math.abs(diffDays)} วัน)` : "(วันนี้)"}
+                      <span className="act-status-pill is-expired-badge">
+                        <AlertTriangle size={11} /> หมดอายุแล้ว {diffDays < 0 ? `(${Math.abs(diffDays)} วัน)` : "(วันนี้)"}
                       </span>
                     ) : isWarning ? (
-                      <span style={{ fontSize: "11px", padding: "3px 8px", backgroundColor: "#FEF2F2", color: "#DC2626", border: "1px solid #FCA5A5", borderRadius: "999px", fontWeight: "bold" }}>
-                        ⚠️ เหลืออีก {diffDays} วัน ({approxMonths} เดือน)
+                      <span className="act-status-pill is-warning-badge">
+                        <AlertTriangle size={11} /> เหลืออีก {diffDays} วัน ({approxMonths} เดือน)
                       </span>
                     ) : (
-                      <span style={{ fontSize: "11px", padding: "3px 8px", backgroundColor: "#ECFDF5", color: "#047857", border: "1px solid #A7F3D0", borderRadius: "999px", fontWeight: "bold" }}>
-                        🟢 เหลืออีก {diffDays} วัน ({approxMonths} เดือน)
+                      <span className="act-status-pill is-ok-badge">
+                        <CheckCircle size={11} /> เหลืออีก {diffDays} วัน ({approxMonths} เดือน)
                       </span>
                     )}
+
+                    
                   </td>
                 </tr>
               );

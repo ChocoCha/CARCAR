@@ -1,20 +1,23 @@
-/* calendar.css — สไตล์หน้า "ปฏิทินการจอง" (มินิมอล ธีมเหลือง-เทา) */
+/* calendar.css — สไตล์หน้า "ปฏิทินการจอง" (ธีม System Prime: ดำ-ทอง-โครเมี่ยม + ไฮไลท์วันนี้สีแดง) */
 
 .cal-card {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 18px;
+  border-radius: 18px;
+  padding: 22px;
   width: 100%;
   box-sizing: border-box;
-  overflow: hidden; /* กันไม่ให้อะไรดันออกนอกกรอบจนเกิด scroll แนวนอน */
+  overflow: hidden;
+  box-shadow: 0 10px 30px -18px rgba(13, 12, 8, 0.25);
 }
 
 .cal-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
   flex-wrap: wrap;
   gap: 10px;
 }
@@ -26,10 +29,10 @@
 }
 
 .cal-nav-btn {
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
-  border: 1px solid var(--line);
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  border: 1.5px solid var(--line);
   background: var(--surface);
   color: var(--stone);
   display: flex;
@@ -37,35 +40,42 @@
   justify-content: center;
   cursor: pointer;
   flex-shrink: 0;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
 }
 
 .cal-nav-btn:hover {
-  border-color: var(--amber-dim);
-  color: var(--amber-dim);
+  border-color: var(--gold-deep);
+  color: var(--gold-deep);
+  background: var(--panel-2);
 }
 
 .cal-month-label {
-  font-size: 14.5px;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: 15.5px;
+  font-weight: 800;
   color: var(--ink);
-  min-width: 120px;
+  min-width: 140px;
   text-align: center;
+  letter-spacing: -0.01em;
 }
 
 .cal-today-btn {
-  border: 1px solid var(--line);
+  border: 1.5px solid var(--line);
   background: var(--surface);
   color: var(--ink);
+  font-family: var(--font-display);
   font-size: 12.5px;
-  font-weight: 600;
-  padding: 7px 14px;
-  border-radius: 8px;
+  font-weight: 700;
+  padding: 8px 18px;
+  border-radius: 99px;
   cursor: pointer;
   flex-shrink: 0;
+  transition: border-color 0.15s ease, color 0.15s ease;
 }
 
 .cal-today-btn:hover {
-  border-color: var(--amber-dim);
+  border-color: #EF4444;
+  color: #EF4444;
 }
 
 .cal-status {
@@ -79,19 +89,19 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px 14px;
-  padding: 10px 12px;
-  margin-bottom: 14px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
   background: var(--panel-2);
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 11px;
 }
 
 .cal-legend-item {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   font-size: 11.5px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--ink-soft, var(--ink));
   white-space: nowrap;
 }
@@ -102,19 +112,22 @@
   border-radius: 50%;
   display: inline-block;
   flex-shrink: 0;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
 }
 
 .cal-weekdays {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   border-bottom: 1px solid var(--line);
-  padding-bottom: 8px;
-  margin-bottom: 4px;
+  padding-bottom: 10px;
+  margin-bottom: 6px;
 }
 
 .cal-weekday {
+  font-family: var(--font-display);
   font-size: 11px;
   font-weight: 700;
+  letter-spacing: 0.04em;
   color: var(--stone);
   text-align: center;
 }
@@ -122,37 +135,43 @@
 .cal-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 3px;
+  gap: 4px;
   width: 100%;
 }
 
 .cal-cell {
-  min-width: 0; /* สำคัญ: ให้ cell บีบตัวได้ตามจอ ไม่ดันตารางล้น */
+  min-width: 0;
   min-height: 78px;
-  border-radius: 8px;
-  padding: 5px 4px 6px;
+  border-radius: 10px;
+  padding: 6px 5px 7px;
   background: var(--bg);
+  border: 1px solid transparent;
   display: flex;
   flex-direction: column;
   gap: 3px;
   overflow: hidden;
+  transition: border-color 0.15s ease;
+}
+
+.cal-cell:hover {
+  border-color: var(--line);
 }
 
 .cal-cell.is-outside {
-  opacity: 0.35;
+  opacity: 0.32;
 }
 
-/* 🟢 ช่อง "วันนี้" เด่นสะดุดตาด้วยกรอบสีส้มทองและเงาฟุ้ง */
+/* 🔴 ช่อง "วันนี้" — กรอบและพื้นหลังไฮไลท์สีแดง */
 .cal-cell.is-today {
-  background-color: #ffe8e8 !important; /* แบ็คกราวด์สีครีมทองสดใส */
-  border: 2px solid #f50b0b !important; /* กรอบสีส้มทอง */
-  box-shadow: inset 0 0 0 1px #d90606, 0 2px 8px rgba(245, 158, 11, 0.3) !important;
+  background: linear-gradient(160deg, rgba(239, 68, 68, 0.12) 0%, rgba(239, 68, 68, 0.02) 100%) !important;
+  border: 1.5px solid #EF4444 !important;
+  box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.18) !important;
 }
 
-/* 🟢 วงกลมไฮไลท์ตัวเลขวันที่เฉพาะ "วันนี้" */
+/* 🔴 วงกลมตัวเลขวันที่ของ "วันนี้" — พื้นหลังสีแดงไล่เฉด + ตัวอักษรสีขาว */
 .cal-cell.is-today .cal-cell-date {
-  color: #ffffff !important;
-  background-color: #d90606 !important; /* วงกลมสีส้มเข้ม */
+  color: #FFFFFF !important;
+  background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%) !important;
   width: 22px;
   height: 22px;
   border-radius: 50%;
@@ -162,6 +181,14 @@
   font-weight: 800;
   font-size: 12px;
   margin-bottom: 2px;
+  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.4);
+}
+
+.cal-cell-date {
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-soft, var(--ink));
 }
 
 .cal-cell-bookings {
@@ -172,14 +199,17 @@
 }
 
 .cal-booking-bar {
+  font-family: var(--font-display);
   font-size: 9.5px;
   font-weight: 700;
+  letter-spacing: 0.01em;
   color: #fff;
-  padding: 2px 4px;
-  border-radius: 4px;
+  padding: 2px 5px;
+  border-radius: 5px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
 }
 
 .cal-booking-more {
@@ -195,15 +225,15 @@
   }
 }
 
-/* จอมือถือ — ย่อทุกอย่างลง แต่ยังคงกริด 7 คอลัมน์เท่าเดิม ไม่มี scroll แนวนอน */
+/* จอมือถือ */
 @media (max-width: 560px) {
   .cal-card {
-    padding: 12px;
-    border-radius: 12px;
+    padding: 14px;
+    border-radius: 14px;
   }
 
   .cal-month-label {
-    font-size: 13px;
+    font-size: 13.5px;
     min-width: 0;
   }
 
@@ -212,16 +242,22 @@
   }
 
   .cal-grid {
-    gap: 2px;
+    gap: 3px;
   }
 
   .cal-cell {
     min-height: 46px;
     padding: 3px 2px 4px;
-    border-radius: 6px;
+    border-radius: 7px;
   }
 
   .cal-cell-date {
+    font-size: 9.5px;
+  }
+
+  .cal-cell.is-today .cal-cell-date {
+    width: 18px;
+    height: 18px;
     font-size: 9.5px;
   }
 
@@ -236,7 +272,7 @@
 
   .cal-legend {
     gap: 6px 10px;
-    padding: 8px 10px;
+    padding: 9px 11px;
   }
 
   .cal-legend-item {

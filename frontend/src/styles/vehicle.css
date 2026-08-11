@@ -22,19 +22,27 @@
 }
 
 .vehicle-card-image {
-  height: 150px;
+  height: 180px; /* 🟢 เพิ่มความสูงกล่องเล็กน้อยเพื่อให้รูปเต็มตาขึ้น */
   background: var(--panel-2);
   display: flex;
   align-items: center;
   justify-content: center;
   border-bottom: 1px solid var(--line);
+  overflow: hidden;
+  position: relative;
 }
 
 .vehicle-card-image img {
   height: 100%;
   width: 100%;
-  object-fit: contain;
-  padding: 14px;
+  /* 🟢 เปลี่ยนจาก contain เป็น cover เพื่อให้รูปเต็มพื้นที่ หรือใช้ contain + ลด padding กรณีต้องการเห็นตัวรถครบไม่โดนครอบ */
+  object-fit: cover; 
+  object-position: center;
+  padding: 0; /* 🟢 ถอน Padding ออกเพื่อให้รูปชิดขอบเต็มกล่อง */
+  transition: transform 0.3s ease;
+}
+.vehicle-card:hover .vehicle-card-image img {
+  transform: scale(1.05); /* ซูมนิดๆ เวลา Hover เพิ่มมิติ */
 }
 
 .vehicle-card-image-fallback {
@@ -249,4 +257,124 @@
     align-items: flex-start;
     gap: 8px;
   }
+}
+
+/* ==================== MY BOOKINGS (theme: System Prime) ==================== */
+.icon-gold { color: var(--gold-deep); }
+
+.mybk-tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid var(--line); padding-bottom: 12px; flex-wrap: wrap; }
+.mybk-tab {
+  padding: 9px 18px; border-radius: 9px; border: 1.5px solid var(--line);
+  background: var(--surface); color: var(--ink-soft);
+  font-family: var(--font-display); font-weight: 700; font-size: 13px;
+  cursor: pointer; display: flex; align-items: center; gap: 7px;
+  transition: border-color .15s ease, color .15s ease, background .15s ease;
+}
+.mybk-tab:hover { border-color: var(--gold-deep); color: var(--gold-deep); }
+.mybk-tab.is-active { background: var(--gradient-dark); border-color: var(--black-deep); color: #fff; }
+.mybk-tab-count { font-size: 11px; padding: 1px 7px; border-radius: 999px; background: var(--panel-2); color: var(--ink-soft); font-weight: 800; }
+.mybk-tab.is-active .mybk-tab-count { background: var(--gradient-gold); color: var(--black-deep); }
+
+.mybk-empty { padding: 44px 20px; text-align: center; background: var(--panel-2); border-radius: 14px; border: 1px dashed var(--line); color: var(--stone); font-size: 13.5px; }
+
+.mybk-list { display: flex; flex-direction: column; gap: 14px; }
+.mybk-card {
+  padding: 20px; background: var(--surface); border-radius: 14px; border: 1px solid var(--line);
+  display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;
+  transition: box-shadow .15s ease, border-color .15s ease;
+}
+.mybk-card:hover { border-color: var(--gold-deep); box-shadow: 0 6px 18px rgba(13, 12, 8, 0.08); }
+
+.mybk-card-title { margin: 0 0 8px 0; font-family: var(--font-display); font-size: 15.5px; font-weight: 700; color: var(--ink); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+.mybk-badge { font-size: 10.5px; padding: 3px 9px; border-radius: 999px; font-weight: 700; letter-spacing: 0.01em; }
+.mybk-badge.is-cancelled { background: var(--red-soft); color: var(--red); border: 1px solid rgba(193, 80, 58, .3); }
+.mybk-badge.is-done { background: var(--panel-2); color: var(--stone); border: 1px solid var(--line); }
+
+.mybk-borrower { display: flex; align-items: center; gap: 6px; color: var(--gold-deep); font-weight: 700; font-size: 12.5px; margin-bottom: 6px; }
+
+.mybk-meta-row { display: flex; gap: 20px; flex-wrap: wrap; font-size: 12.5px; color: var(--ink-soft); }
+.mybk-meta-row span { display: flex; align-items: center; gap: 6px; }
+
+.mybk-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.mybk-btn {
+  display: flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 9px;
+  cursor: pointer; font-size: 12.5px; font-weight: 700; font-family: var(--font-display);
+  transition: border-color .15s ease, background .15s ease, filter .15s ease;
+}
+.mybk-btn.is-view { border: 1.5px solid var(--line); background: var(--surface); color: var(--gold-deep); }
+.mybk-btn.is-view:hover { border-color: var(--gold-deep); background: var(--panel-2); }
+.mybk-btn.is-cancel { border: 1.5px solid rgba(193, 80, 58, .35); background: var(--red-soft); color: var(--red); }
+.mybk-btn.is-cancel:hover { filter: brightness(0.96); }
+
+.mybk-detail-title { margin: 0 0 10px 0; color: var(--gold-deep); font-family: var(--font-display); font-size: 18px; font-weight: 800; }
+.mybk-detail-row { margin: 6px 0; font-size: 13.5px; color: var(--ink-soft); }
+.mybk-detail-row strong { color: var(--ink); }
+.mybk-detail-highlight { font-weight: 700; color: var(--gold-deep); }
+.mybk-status-ok { color: #1f9d63; font-weight: 700; }
+.mybk-status-cancelled { color: var(--red); font-weight: 700; }
+
+/* ==================== ADDITIONAL MAINTENANCE & OVERLAY ==================== */
+
+/* ป้ายทะเบียนลอยมุมล่างซ้ายของการ์ด */
+.vehicle-card-plate-chip {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  background: rgba(13, 12, 8, 0.75);
+  color: #ffffff;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  z-index: 5;
+  backdrop-filter: blur(4px);
+}
+
+/* ปุ่มสวิตช์เปิด/ปิด ระบบซ่อม ของ Admin */
+.vehicle-toggle-switch {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 20; /* ลอยอยู่เหนือม่านสีแดงเพื่อให้กดได้เสมอ */
+  background: rgba(13, 12, 8, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  padding: 3px 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+}
+
+.vehicle-toggle-label {
+  font-size: 10.5px;
+  font-weight: 700;
+}
+.vehicle-toggle-label.is-on { color: #10b981; }
+.vehicle-toggle-label.is-off { color: #ef4444; }
+
+/* 🔴 ม่านสีแดงคลุมทับรูปภาพแบบเต็ม 100% เมื่อรถซ่อมบำรุง */
+.vehicle-maintenance-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(233, 61, 61, 0.82) !important; /* สีแดงโปร่งแสง */
+  backdrop-filter: blur(3px);
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-weight: 800;
+  font-size: 13.5px;
+  z-index: 10;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  box-sizing: border-box;
 }

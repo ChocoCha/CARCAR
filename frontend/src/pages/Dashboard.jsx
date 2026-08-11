@@ -1,22 +1,21 @@
 import { useState, useEffect } from "react";
 import MainLayout from "../layouts/MainLayout";
 import VehicleCard from "../components/VehicleCard";
-import { X, User, Eye, Maximize2, AlertTriangle } from "lucide-react";
+import { X, User, Eye, Maximize2, AlertTriangle, ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
 import "../styles/vehicle.css";
 
 export default function Dashboard({ onNavigate }) { 
-  // 🟢 ดึง IP เครื่องเซิร์ฟเวอร์อัตโนมัติ
   const API_BASE = `http://${window.location.hostname}:5000/api`;
 
-  // 🟢 Helper แปลง Path รูปภาพให้ต่อ IP เครื่องเซิร์ฟเวอร์เต็มรูปแบบ
   const getImageUrl = (imagePath) => {
     if (!imagePath) return "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=600";
     if (imagePath.startsWith("http")) return imagePath;
     return `http://${window.location.hostname}:5000${imagePath.startsWith("/") ? "" : "/"}${imagePath}`;
   };
 
-  const [currentUser] = useState(localStorage.getItem("borrowerName") || "พนักงานทั่วไป");
+  const [currentUser, setCurrentUser] = useState(localStorage.getItem("borrowerName") || "พนักงานทั่วไป");
   const userRole = localStorage.getItem("userRole") || "employee";
+  const borrowerEmpId = localStorage.getItem("borrowerEmpId");
   const isAdmin = userRole.trim().toLowerCase() === "admin";
 
   const [vehicles, setVehicles] = useState([]);
@@ -32,16 +31,32 @@ export default function Dashboard({ onNavigate }) {
 
   useEffect(() => {
     fetchData();
+    fetchLatestUserProfile();
   }, []);
+
+  async function fetchLatestUserProfile() {
+    if (!borrowerEmpId) return;
+    try {
+      const res = await fetch(`${API_BASE}/employees`);
+      if (res.ok) {
+        const employees = await res.json();
+        const me = employees.find(emp => emp.id?.toString().trim().toUpperCase() === borrowerEmpId.toString().trim().toUpperCase());
+        if (me && me.name) {
+          setCurrentUser(me.name);
+          localStorage.setItem("borrowerName", me.name);
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching profile:", err);
+    }
+  }
 
   async function fetchData() {
     try {
-      // 🟢 ดึงข้อมูลผ่าน API_BASE
       const resVehicles = await fetch(`${API_BASE}/vehicles`);
       if (!resVehicles.ok) throw new Error("ดึงข้อมูลรถไม่สำเร็จ");
       const dataVehicles = await resVehicles.json();
       
-      // 🟢 แปลง Field image ให้เป็น URL สมบูรณ์ก่อนเก็บเข้า State
       const formattedVehicles = Array.isArray(dataVehicles) ? dataVehicles.map(v => ({
         ...v,
         image: getImageUrl(v.image)
@@ -71,6 +86,7 @@ export default function Dashboard({ onNavigate }) {
             startDate: formatDateToLocal(b.start_date),
             endDate: formatDateToLocal(b.end_date),
             borrower: b.borrower,
+            status: b.status,
             color: b.vehicle_id === "v1" ? "#F59E0B" : b.vehicle_id === "v2" ? "#10B981" : b.vehicle_id === "v3" ? "#3B82F6" : "#EC4899"
           };
         });
@@ -85,7 +101,6 @@ export default function Dashboard({ onNavigate }) {
     }
   }
 
-  // 🟢 คำนวณวันหมดอายุ พ.ร.บ.
   function getActWarning(expiryDateStr) {
     if (!expiryDateStr) return null;
     const today = new Date();
@@ -97,7 +112,7 @@ export default function Dashboard({ onNavigate }) {
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
     if (diffDays <= 90) {
-      return diffDays <= 0 ? "⚠️ พ.ร.บ. หมดอายุแล้ว! กรุณาต่อด่วน" : `⚠️ พ.ร.บ. ใกล้หมดอายุในอีก ${diffDays} วัน`;
+      return diffDays <= 0 ? "พ.ร.บ. หมดอายุแล้ว! กรุณาต่อด่วน" : `พ.ร.บ. ใกล้หมดอายุในอีก ${diffDays} วัน`;
     }
     return null;
   }
@@ -130,11 +145,12 @@ export default function Dashboard({ onNavigate }) {
 
     const isOverlapping = bookings.some((booking) => {
       if (booking.vehicleId !== selectedVehicle.id) return false;
+      if (booking.status === 'cancelled') return false;
       return startDate <= booking.endDate && endDate >= booking.startDate;
     });
 
     if (isOverlapping) {
-      alert(`❌ ไม่สามารถจองได้: รถยนต์คันนี้ถูกจองในช่วงวันที่ระบุแล้ว`);
+      alert(`ไม่สามารถจองได้: รถยนต์คันนี้ถูกจองแล้ว`);
       return;
     }
 
@@ -152,7 +168,7 @@ export default function Dashboard({ onNavigate }) {
       });
 
       if (response.ok) {
-        alert(`ทำการลงทะเบียนจองรถ ${selectedVehicle.model} สำเร็จแล้ว!`);
+        alert(`ทำการจองรถยนต์ ${selectedVehicle.model} สำเร็จแล้ว!`);
         setModalMode(null);
         setSelectedVehicle(null);
         setStartDate("");
@@ -166,17 +182,99 @@ export default function Dashboard({ onNavigate }) {
     }
   }
 
+  // 🟢 คำนวณวันปัจจุบัน YYYY-MM-DD
+  const todayStr = (() => {
+    const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  })();
+
+  // 🟢 คำนวณสถิติเฉพาะคิวจองที่กำลังใช้งานอยู่จริง (ไม่นับคิวที่ยกเลิก และคิวที่หมดอายุแล้ว)
+  const activeBookingsCount = bookings.filter(b => {
+    if (b.status === "cancelled") return false;
+    return b.endDate >= todayStr;
+  }).length;
+
+  const availableCount = vehicles.filter(v => v.status !== "maintenance").length;
+  const maintenanceCount = vehicles.filter(v => v.status === "maintenance").length;
+
+  function goToVehicle(direction) {
+    if (!selectedVehicle || vehicles.length < 2) return;
+    const idx = vehicles.findIndex(v => v.id === selectedVehicle.id);
+    if (idx === -1) return;
+    const nextIdx = (idx + direction + vehicles.length) % vehicles.length;
+    setSelectedVehicle(vehicles[nextIdx]);
+    setStartDate("");
+    setEndDate("");
+  }
+
   return (
     <MainLayout 
       activePage="dashboard" 
       onNavigate={onNavigate} 
-      title="🚗 ยานพาหนะทั้งหมด" 
-      subtitle="เลือกรถยนต์และเลือกสำหรับการจองของคุณ"
+      title="รถยนต์ทั้งหมด" 
+      subtitle="เลือกรถยนต์สำหรับการจองของคุณ"
     >
-      <div className="dashboard-user-banner">
-        <div className="user-banner-welcome">
-          <User size={18} className="icon-gold" />
-          <span>ผู้ใช้งาน: <strong>{currentUser}</strong></span>
+      {/* ==================== HERO BANNER ==================== */}
+      <div className="hero-banner-v2">
+        <div className="hero-photo-side">
+          <div className="hero-photo-top">
+            <div className="hero-brand-mark">
+              <span className="hero-brand-gem" />
+              System Prime 
+            </div>
+          </div>
+          <div className="hero-photo-bottom">
+           
+            <h2 className="hero-welcome">
+              ยินดีต้อนรับ <strong>{currentUser}</strong>
+            </h2>
+            
+          </div>
+        </div>
+
+        <div className="hero-stats-side">
+          <div className="hero-stats-header">ข้อมูลการทำรายการ</div>
+
+          <div className="hero-stat-row">
+            <span className="hero-stat-gem" />
+            <div>
+              <div className="hero-stat-num">{vehicles.length}</div>
+              <div className="hero-stat-lbl">รถยนต์ทั้งหมด</div>
+            </div>
+          </div>
+
+          <div className="hero-stat-row">
+            <span className="hero-stat-gem" />
+            <div>
+              <div className="hero-stat-num">{availableCount}</div>
+              <div className="hero-stat-lbl">รถยนต์ที่พร้อมใช้งาน</div>
+            </div>
+          </div>
+
+          <div className={`hero-stat-row ${maintenanceCount > 0 ? "warn" : ""}`}>
+            <span className="hero-stat-gem" />
+            <div>
+              <div className="hero-stat-num">{maintenanceCount}</div>
+              <div className="hero-stat-lbl">รถยนต์ที่ซ่อมบำรุง</div>
+            </div>
+          </div>
+
+          <div className="hero-stat-row">
+            <span className="hero-stat-gem" />
+            <div>
+              <div className="hero-stat-num">{activeBookingsCount}</div>
+              <div className="hero-stat-lbl">รถยนต์ที่ถูกจอง</div>
+            </div>
+          </div>
+
+          <div className="hero-stats-footer">
+            <button type="button" className="hero-stats-link" onClick={() => onNavigate("traffic")}>
+              ดูปฏิทินการจอง <ArrowRight size={14} />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -186,7 +284,6 @@ export default function Dashboard({ onNavigate }) {
 
           return (
             <div key={vehicle.id} style={{ position: "relative" }}>
-              {/* แถบคาดเตือนสีแดงบนรูปรถ (แสดงเฉพาะแอดมิน เมื่อใกล้หมด พ.ร.บ. <= 90 วัน) */}
               {isAdmin && actWarning && (
                 <div style={{ position: "absolute", top: "10px", left: "10px", right: "10px", zIndex: 10, backgroundColor: "#EF4444", color: "#fff", padding: "6px 12px", borderRadius: "6px", fontSize: "12px", fontWeight: "bold", display: "flex", alignItems: "center", gap: "6px", boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }}>
                   <AlertTriangle size={15} /> {actWarning}
@@ -204,105 +301,145 @@ export default function Dashboard({ onNavigate }) {
         })}
       </div>
 
-      {/* ==================== POPUP MODALS ==================== */}
-      {modalMode && selectedVehicle && (
+      {/* ==================== VIEW MODAL ==================== */}
+      {modalMode === "view" && selectedVehicle && (
         <div className="modal-overlay" onClick={() => setModalMode(null)} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
           <div className="booking-modal fg-rise" style={{ maxWidth: "480px", width: "90%", backgroundColor: "#fff", padding: "20px", borderRadius: "12px", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)" }} onClick={e => e.stopPropagation()}>
-            
-            {modalMode === "view" && (
-              <>
-                <div className="modal-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-                  <h2 style={{ fontSize: "16px", margin: 0, fontWeight: "700" }}><Eye size={18} style={{ verticalAlign: "middle", marginRight: "6px", color: "#1e3a8a" }} /> รายละเอียดข้อมูลยานพาหนะ</h2>
-                  <button type="button" className="close-btn" onClick={() => setModalMode(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#9ca3af" }}><X size={20} /></button>
-                </div>
-                <div className="modal-body">
-                  <div className="modal-vehicle-detailed-panel">
-                    <div 
-                      onClick={() => setZoomedImage(selectedVehicle.image)}
-                      title="คลิกเพื่อส่องดูรูปขนาดใหญ่"
-                      style={{ width: "100%", aspectRatio: "16 / 10", borderRadius: "12px", overflow: "hidden", border: "1px solid #e5e7eb", backgroundColor: "#f9fafb", position: "relative", cursor: "pointer", display: "flex" }}
-                    >
-                      <img 
-                        src={selectedVehicle.image} 
-                        alt={selectedVehicle.model} 
-                        style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center" }}
-                        onError={(e)=>{e.target.src="https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=600"}} 
-                      />
-                      <div style={{ position: "absolute", bottom: "10px", right: "10px", backgroundColor: "rgba(0, 0, 0, 0.65)", color: "#fff", padding: "4px 10px", borderRadius: "6px", fontSize: "11px", display: "flex", alignItems: "center", gap: "4px", fontWeight: "500" }}>
-                        <Maximize2 size={12} /> คลิกขยายรูป
-                      </div>
-                    </div>
-
-                    <div className="modal-car-specs-grid" style={{ marginTop: "16px" }}>
-                      <h3 style={{ margin: "0 0 10px 0", fontSize: "18px", color: "#111827" }}>{selectedVehicle.model}</h3>
-                      <div className="spec-tag-group" style={{ display: "flex", gap: "8px" }}>
-                        <span className="spec-tag" style={{ padding: "6px 12px", backgroundColor: "#f3f4f6", color: "#374151", borderRadius: "6px", fontSize: "13px", fontWeight: "600" }}>ทะเบียน: {selectedVehicle.plate}</span>
-                        <span className="spec-tag" style={{ padding: "6px 12px", backgroundColor: "#f3f4f6", color: "#374151", borderRadius: "6px", fontSize: "13px", fontWeight: "600" }}>ความจุ: {selectedVehicle.seats} ที่นั่ง</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="modal-footer" style={{ marginTop: "24px", display: "flex", justifyContent: "flex-end" }}>
-                    <button type="button" onClick={() => setModalMode(null)} style={{ padding: "8px 20px", backgroundColor: "#1e3a8a", color: "#fff", border: "none", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "14px" }}>ปิดหน้าต่างรายละเอียด</button>
+            <div className="modal-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+              <h2 style={{ fontSize: "16px", margin: 0, fontWeight: "700", color: "var(--ink)" }}><Eye size={18} style={{ verticalAlign: "middle", marginRight: "6px", color: "var(--gold-deep)" }} /> รายละเอียดข้อมูลรถยนต์</h2>
+              <button type="button" className="close-btn" onClick={() => setModalMode(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#9ca3af" }}><X size={20} /></button>
+            </div>
+            <div className="modal-body">
+              <div className="modal-vehicle-detailed-panel">
+                <div 
+                  onClick={() => setZoomedImage(selectedVehicle.image)}
+                  title="คลิกเพื่อส่องดูรูปขนาดใหญ่"
+                  style={{ width: "100%", aspectRatio: "16 / 10", borderRadius: "12px", overflow: "hidden", border: "1px solid #e5e7eb", backgroundColor: "#f9fafb", position: "relative", cursor: "pointer", display: "flex" }}
+                >
+                  <img 
+                    src={selectedVehicle.image} 
+                    alt={selectedVehicle.model} 
+                    style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center" }}
+                    onError={(e)=>{e.target.src="https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=600"}} 
+                  />
+                  <div style={{ position: "absolute", bottom: "10px", right: "10px", backgroundColor: "rgba(0, 0, 0, 0.65)", color: "#fff", padding: "4px 10px", borderRadius: "6px", fontSize: "11px", display: "flex", alignItems: "center", gap: "4px", fontWeight: "500" }}>
+                    <Maximize2 size={12} /> คลิกขยายรูป
                   </div>
                 </div>
-              </>
-            )}
 
-            {modalMode === "booking" && (
-              <form onSubmit={handleConfirmBooking}>
-                <div className="modal-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-                  <h2 style={{ fontSize: "16px", margin: 0, fontWeight: "700", color: "#1e3a8a" }}>📅 บันทึกคำขอสิทธิ์จองคิวยานพาหนะ</h2>
-                  <button type="button" className="close-btn" onClick={() => setModalMode(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#9ca3af" }}><X size={20} /></button>
-                </div>
-                <div className="modal-body">
-                  <div className="modal-user-status-strip" style={{ marginBottom: "12px" }}>
-                    <div className="user-logged-info" style={{ fontSize: "13px", color: "#4b5563" }}>
-                      <span>ชื่อบัญชีผู้ขอจองรถ: <strong style={{ color: "#111827" }}>{currentUser}</strong></span>
-                    </div>
-                  </div>
-
-                  <div className="modal-vehicle-info" style={{ padding: "10px", display: "flex", gap: "14px", backgroundColor: "#f9fafb", borderRadius: "8px", alignItems: "center", border: "1px solid #f3f4f6" }}>
-                    <div 
-                      onClick={() => setZoomedImage(selectedVehicle.image)}
-                      title="คลิกส่องรูปใหญ่"
-                      style={{ width: "90px", height: "65px", overflow: "hidden", borderRadius: "6px", backgroundColor: "#fff", display: "flex", alignItems: "center", cursor: "pointer", border: "1px solid #e5e7eb" }}
-                    >
-                      <img 
-                        src={selectedVehicle.image} 
-                        alt={selectedVehicle.model} 
-                        style={{ width: "100%", height: "100%", objectFit: "cover" }} 
-                        onError={(e)=>{e.target.src="https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=600"}} 
-                      />
-                    </div>
-                    <div>
-                      <h4 style={{ margin: "0 0 2px 0", fontSize: "15px", fontWeight: "600", color: "#111827" }}>{selectedVehicle.model}</h4>
-                      <p style={{ margin: "0", fontSize: "12px", color: "#6b7280" }}><strong>ทะเบียน:</strong> {selectedVehicle.plate}</p>
-                    </div>
-                  </div>
-
-                  <div className="modal-form-inputs" style={{ marginTop: "16px" }}>
-                    <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                      <div>
-                        <label style={{ fontSize: "12px", fontWeight: "600", display: "block", marginBottom: "4px", color: "#374151" }}>เลือกวันที่เริ่มต้น</label>
-                        <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #d1d5db", boxSizing: "border-box", fontSize: "14px" }} />
-                      </div>
-                      <div>
-                        <label style={{ fontSize: "12px", fontWeight: "600", display: "block", marginBottom: "4px", color: "#374151" }}>เลือกวันที่สิ้นสุด</label>
-                        <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} required style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #d1d5db", boxSizing: "border-box", fontSize: "14px" }} />
-                      </div>
-                    </div>
+                <div className="modal-car-specs-grid" style={{ marginTop: "16px" }}>
+                  <h3 style={{ margin: "0 0 10px 0", fontSize: "18px", color: "#111827" }}>{selectedVehicle.model}</h3>
+                  <div className="spec-tag-group" style={{ display: "flex", gap: "8px" }}>
+                    <span className="spec-tag" style={{ padding: "6px 12px", backgroundColor: "#f3f4f6", color: "#374151", borderRadius: "6px", fontSize: "13px", fontWeight: "600" }}>ทะเบียน: {selectedVehicle.plate}</span>
+                    <span className="spec-tag" style={{ padding: "6px 12px", backgroundColor: "#f3f4f6", color: "#374151", borderRadius: "6px", fontSize: "13px", fontWeight: "600" }}>ความจุ: {selectedVehicle.seats} ที่นั่ง</span>
                   </div>
                 </div>
-                <div className="modal-footer" style={{ marginTop: "20px", display: "flex", justifyContent: "flex-end", gap: "10px" }}>
-                  <button type="button" onClick={() => setModalMode(null)} style={{ padding: "8px 16px", border: "1px solid #d1d5db", backgroundColor: "#fff", color: "#4b5563", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "14px" }}>ยกเลิก</button>
-                  <button type="submit" style={{ padding: "8px 24px", backgroundColor: "#F59E0B", color: "#fff", border: "none", borderRadius: "6px", fontWeight: "700", cursor: "pointer", fontSize: "14px" }}>ยืนยันการจอง</button>
-                </div>
-              </form>
-            )}
-
+              </div>
+              <div className="modal-footer" style={{ marginTop: "24px", display: "flex", justifyContent: "flex-end" }}>
+                <button type="button" className="btn-dark" onClick={() => setModalMode(null)}>ปิดหน้าต่างรายละเอียด</button>
+              </div>
+            </div>
           </div>
         </div>
       )}
+
+      {/* ==================== BOOKING MODAL ==================== */}
+      {modalMode === "booking" && selectedVehicle && (() => {
+        const actWarning = getActWarning(selectedVehicle.act_expiry_date);
+        return (
+          <div className="booking-fullscreen-overlay" onClick={() => setModalMode(null)}>
+            <div className="booking-split-card fg-rise" onClick={e => e.stopPropagation()}>
+              
+              <div 
+                className="booking-panel-image" 
+                style={{ backgroundImage: `url(${selectedVehicle.image})` }}
+              >
+                <div className="booking-image-topbar">
+                  <div className="booking-brand">
+                    <span className="booking-brand-mark" />
+                    System Prime · Fleet
+                  </div>
+                  <div className="booking-image-caption">ระบบจองรถยนต์ส่วนกลาง</div>
+                </div>
+                <div className="booking-image-bottom">
+                  <div className="booking-model-name">{selectedVehicle.model}</div>
+                  <div className="booking-model-big-stat">
+                    {selectedVehicle.seats}<span>ที่นั่ง</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="booking-panel-dark">
+                <button type="button" className="booking-panel-close" onClick={() => setModalMode(null)}>
+                  <X size={20} />
+                </button>
+
+                <div className="booking-title-row">
+                  <div>
+                    <div className="booking-title-label">ทะเบียนรถ</div>
+                    <div className="booking-title-value">{selectedVehicle.plate}</div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div className="booking-title-label">ผู้จอง</div>
+                    <div className="booking-title-value gold">{currentUser}</div>
+                  </div>
+                </div>
+
+                <form onSubmit={handleConfirmBooking}>
+                  <div className="booking-form-dark">
+                    <div className="booking-field">
+                      <label>วันที่เริ่มต้น</label>
+                      <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
+                    </div>
+                    <div className="booking-field">
+                      <label>วันที่สิ้นสุด</label>
+                      <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} required />
+                    </div>
+                  </div>
+
+                  <div className="booking-specs-row">
+                    <div>
+                      <div className="booking-spec-label">ความจุ</div>
+                      <div className="booking-spec-value">{selectedVehicle.seats} ที่นั่ง</div>
+                    </div>
+                    <div>
+                      <div className="booking-spec-label">รหัสรถ</div>
+                      <div className="booking-spec-value">{selectedVehicle.id}</div>
+                    </div>
+                    <div>
+                      <div className="booking-spec-label">พ.ร.บ.</div>
+                      <div className={`booking-spec-value ${actWarning ? "warn" : ""}`}>
+                        {actWarning ? <AlertTriangle size={13} /> : null}
+                        {actWarning ? "ใกล้ครบกำหนด" : "ปกติ"}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="booking-actions-row">
+                    <button type="button" className="btn-outline-gold" onClick={() => setModalMode(null)}>ยกเลิก</button>
+                    <button type="submit" className="btn-gold">ยืนยันการจอง</button>
+                  </div>
+                </form>
+
+                <div className="booking-footer-nav">
+                  <div className="booking-nav-arrows">
+                    <button type="button" className="booking-icon-btn" onClick={() => goToVehicle(-1)} disabled={vehicles.length < 2} title="รถคันก่อนหน้า">
+                      <ChevronLeft size={18} />
+                    </button>
+                    <button type="button" className="booking-icon-btn" onClick={() => goToVehicle(1)} disabled={vehicles.length < 2} title="รถคันถัดไป">
+                      <ChevronRight size={18} />
+                    </button>
+                  </div>
+                  <button type="button" className="booking-icon-btn" onClick={() => setZoomedImage(selectedVehicle.image)} title="ขยายรูป">
+                    <Maximize2 size={16} />
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        );
+      })()}
 
       {/* LIGHTBOX ขยายรูปภาพ */}
       {zoomedImage && (
