@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import MainLayout from "../layouts/MainLayout";
-import { User, Car, Plus, Trash2, Edit3, X, Upload, Layers } from "lucide-react";
+import { User, Car, Plus, Trash2, Edit3, X, Upload, Layers, AlertTriangle, CheckCircle2 } from "lucide-react";
 import "../styles/admin.css";
 
 export default function AdminManagement({ onNavigate }) {
@@ -21,6 +21,12 @@ export default function AdminManagement({ onNavigate }) {
 
   const [isEmpModalOpen, setIsEmpModalOpen] = useState(false);
   const [isCarModalOpen, setIsCarModalOpen] = useState(false);
+
+  // 🟢 State สำหรับป๊อปอัปยืนยันการลบ
+  const [deleteConfirmConfig, setDeleteConfirmConfig] = useState(null);
+
+  // 🟢 State สำหรับ Modal แจ้งเตือนผลการทำงาน (แทน alert)
+  const [noticeModal, setNoticeModal] = useState(null);
 
   const [empForm, setEmpForm] = useState({ id: "", name: "", dept: "", password: "1234", role: "employee" });
   const [editingEmpId, setEditingEmpId] = useState(null);
@@ -51,6 +57,11 @@ export default function AdminManagement({ onNavigate }) {
     }
   }
 
+  // Helper สำหรับเรียกโชว์ Modal แจ้งเตือนผลลัพธ์
+  function showNotice(title, message, isError = false) {
+    setNoticeModal({ title, message, isError });
+  }
+
   // ==================== [ API: พนักงาน ] ====================
   async function fetchEmployees() {
     try {
@@ -65,29 +76,49 @@ export default function AdminManagement({ onNavigate }) {
     const url = isEdit ? `${API_BASE}/employees/${editingEmpId}` : `${API_BASE}/employees`;
     const method = isEdit ? "PUT" : "POST";
 
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        id: empForm.id.trim(),
-        name: empForm.name,
-        dept: empForm.dept,
-        password: empForm.password,
-        role: empForm.role
-      })
-    });
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: empForm.id.trim(),
+          name: empForm.name,
+          dept: empForm.dept,
+          password: empForm.password,
+          role: empForm.role
+        })
+      });
 
-    if (res.ok) {
-      alert(isEdit ? "อัปเดตข้อมูลบัญชีพนักงานสำเร็จ!" : "เพิ่มบัญชีผู้ใช้สำเร็จ!");
-      closeEmpModal();
-      fetchEmployees();
+      if (res.ok) {
+        closeEmpModal();
+        fetchEmployees();
+        showNotice("ทำรายการสำเร็จ", isEdit ? "อัปเดตข้อมูลบัญชีพนักงานเรียบร้อยแล้ว!" : "เพิ่มบัญชีผู้ใช้งานใหม่เรียบร้อยแล้ว!");
+      } else {
+        const errData = await res.json();
+        showNotice("เกิดข้อผิดพลาด", errData.message || "ไม่สามารถบันทึกข้อมูลพนักงานได้", true);
+      }
+    } catch (err) {
+      showNotice("เกิดข้อผิดพลาด", "ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์หลังบ้านได้", true);
     }
   }
 
-  async function handleDeleteEmployee(id) {
-    if (!confirm(`ยืนยันลบบัญชีพนักงาน ${id}?`)) return;
-    const res = await fetch(`${API_BASE}/employees/${id}`, { method: "DELETE" });
-    if (res.ok) { fetchEmployees(); alert("ลบข้อมูลสำเร็จ!"); }
+  function askDeleteEmployee(emp) {
+    setDeleteConfirmConfig({
+      title: "ยืนยันลบบัญชีพนักงาน",
+      message: `คุณต้องการลบบัญชีพนักงาน [ ${emp.name} (${emp.id}) ] ใช่หรือไม่?`,
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`${API_BASE}/employees/${emp.id}`, { method: "DELETE" });
+          if (res.ok) { 
+            fetchEmployees(); 
+            setDeleteConfirmConfig(null);
+            showNotice("ทำรายการสำเร็จ", "ลบบัญชีพนักงานเรียบร้อยแล้ว");
+          }
+        } catch (err) {
+          showNotice("เกิดข้อผิดพลาด", "ไม่สามารถลบข้อมูลพนักงานได้", true);
+        }
+      }
+    });
   }
 
   function startEditEmp(emp) {
@@ -131,39 +162,47 @@ export default function AdminManagement({ onNavigate }) {
       formData.append("imageFile", selectedFile);
     }
 
-    const res = await fetch(url, { method, body: formData });
+    try {
+      const res = await fetch(url, { method, body: formData });
 
-    if (res.ok) {
-      alert(isEdit ? "แก้ไขข้อมูลรถยนต์สำเร็จ" : "ลงทะเบียนรถยนต์สำเร็จ");
-      setSelectedFile(null);
-      closeCarModal();
-      fetchVehicles();
-    } else {
-      const errData = await res.json();
-      alert(errData.message || "เกิดข้อผิดพลาดในการบันทึกข้อมูล");
+      if (res.ok) {
+        setSelectedFile(null);
+        closeCarModal();
+        fetchVehicles();
+        showNotice("ทำรายการสำเร็จ", isEdit ? "แก้ไขข้อมูลรถยนต์เรียบร้อยแล้ว" : "เพิ่มรถยนต์คันใหม่เรียบร้อยแล้ว!");
+      } else {
+        const errData = await res.json();
+        showNotice("เกิดข้อผิดพลาด", errData.message || "เกิดข้อผิดพลาดในการบันทึกข้อมูลรถยนต์", true);
+      }
+    } catch (err) {
+      showNotice("เกิดข้อผิดพลาด", "ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้", true);
     }
   }
 
-  // 🟢 ปรับเปลี่ยนแจ้งเตือนลบรถ ให้ขึ้นชื่อรุ่นและป้ายทะเบียน
-  async function handleDeleteVehicle(car) {
+  function askDeleteVehicle(car) {
     const carName = typeof car === 'object' ? `${car.model} (${car.plate})` : car;
     const carId = typeof car === 'object' ? car.id : car;
 
-    if (!confirm(`ยืนยันการลบรถยนต์ [ ${carName} ] ออกจากระบบใช่หรือไม่?`)) return;
-
-    try {
-      const res = await fetch(`${API_BASE}/vehicles/${encodeURIComponent(carId)}`, { method: "DELETE" });
-      if (res.ok) {
-        fetchVehicles();
-        alert("ลบข้อมูลรถยนต์สำเร็จ!");
-      } else {
-        const errData = await res.json();
-        alert(`ลบไม่สำเร็จ: ${errData.message || errData.error}`);
+    setDeleteConfirmConfig({
+      title: "ยืนยันการลบรถยนต์",
+      message: `คุณต้องการลบรถยนต์ [ ${carName} ] ออกจากระบบใช่หรือไม่?`,
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`${API_BASE}/vehicles/${encodeURIComponent(carId)}`, { method: "DELETE" });
+          if (res.ok) {
+            fetchVehicles();
+            setDeleteConfirmConfig(null);
+            showNotice("ทำรายการสำเร็จ", "ลบข้อมูลรถยนต์ออกจากระบบเรียบร้อยแล้ว");
+          } else {
+            const errData = await res.json();
+            showNotice("ลบไม่สำเร็จ", errData.message || errData.error, true);
+          }
+        } catch (err) {
+          console.error("Delete Error:", err);
+          showNotice("เกิดข้อผิดพลาด", "ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้", true);
+        }
       }
-    } catch (err) {
-      console.error("Delete Error:", err);
-      alert("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
-    }
+    });
   }
 
   async function handleStatusChange(car, nextStatus) {
@@ -183,15 +222,14 @@ export default function AdminManagement({ onNavigate }) {
       });
 
       if (res.ok) {
-        alert(`สลับสถานะรถ ${car.model} เรียบร้อย!`);
         fetchVehicles();
+        showNotice("อัปเดตสถานะ", `สลับสถานะรถ ${car.model} เรียบร้อยแล้ว`);
       } else {
         const err = await res.json();
-        alert(`เปลี่ยนสถานะไม่สำเร็จ: ${err.message || err.error}`);
+        showNotice("สลับสถานะไม่สำเร็จ", err.message || err.error, true);
       }
     } catch (err) {
-      console.error("Error updating status:", err);
-      alert("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์หลังบ้านได้");
+      showNotice("เกิดข้อผิดพลาด", "ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์หลังบ้านได้", true);
     }
   }
 
@@ -232,32 +270,44 @@ export default function AdminManagement({ onNavigate }) {
     }
   }
 
-  async function handleDeleteSingleBooking(id) {
-    if (!confirm(`ยืนยันลบประวัติการจองรหัส BOOK-${id}?`)) return;
-    try {
-      const res = await fetch(`${API_BASE}/bookings/${id}`, { method: "DELETE" });
-      if (res.ok) {
-        alert("🗑️ ลบประวัติการจองเรียบร้อยแล้ว");
-        fetchAllBookings();
+  function askDeleteSingleBooking(id) {
+    setDeleteConfirmConfig({
+      title: "ยืนยันลบประวัติการจอง",
+      message: `คุณต้องการลบประวัติการจองรหัส BOOK-${id} ใช่หรือไม่?`,
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`${API_BASE}/bookings/${id}`, { method: "DELETE" });
+          if (res.ok) {
+            fetchAllBookings();
+            setDeleteConfirmConfig(null);
+            showNotice("ทำรายการสำเร็จ", `ลบประวัติการจองรหัส BOOK-${id} เรียบร้อยแล้ว`);
+          }
+        } catch (err) { console.error(err); }
       }
-    } catch (err) { console.error(err); }
+    });
   }
 
-  async function handleDeleteBatchBookings() {
+  function askDeleteBatchBookings() {
     if (selectedBookingIds.length === 0) return;
-    if (!confirm(`ยืนยันลบประวัติการจองที่เลือกไว้จำนวน ${selectedBookingIds.length} รายการ?`)) return;
 
-    try {
-      const res = await fetch(`${API_BASE}/bookings/delete-batch`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: selectedBookingIds })
-      });
-      if (res.ok) {
-        alert(`🗑️ ลบประวัติการจองจำนวน ${selectedBookingIds.length} รายการเรียบร้อยแล้ว!`);
-        fetchAllBookings();
+    setDeleteConfirmConfig({
+      title: "ยืนยันลบประวัติแบบกลุ่ม",
+      message: `คุณต้องการลบประวัติการจองที่เลือกไว้จำนวน ${selectedBookingIds.length} รายการใช่หรือไม่?`,
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`${API_BASE}/bookings/delete-batch`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ids: selectedBookingIds })
+          });
+          if (res.ok) {
+            fetchAllBookings();
+            setDeleteConfirmConfig(null);
+            showNotice("ทำรายการสำเร็จ", `ลบประวัติการจองจำนวน ${selectedBookingIds.length} รายการเรียบร้อยแล้ว`);
+          }
+        } catch (err) { console.error(err); }
       }
-    } catch (err) { console.error(err); }
+    });
   }
 
   function toggleSelectAllBookings() {
@@ -287,7 +337,6 @@ export default function AdminManagement({ onNavigate }) {
 
   const todayStr = getSafeDateStr(new Date());
 
-  // 🟢 เรียงลำดับตารางตาม ID การจอง จากมากไปน้อย (ล่าสุดขึ้นบนสุดเสมอ)
   const sortedBookings = [...bookings].sort((a, b) => Number(b.id) - Number(a.id));
 
   return (
@@ -345,7 +394,7 @@ export default function AdminManagement({ onNavigate }) {
                   <td data-label="จัดการ">
                     <div className="action-cell">
                       <button onClick={() => startEditEmp(emp)} className="action-btn btn-edit" title="แก้ไข"><Edit3 size={15} /></button>
-                      <button onClick={() => handleDeleteEmployee(emp.id)} className="action-btn btn-delete" title="ลบ"><Trash2 size={15} /></button>
+                      <button onClick={() => askDeleteEmployee(emp)} className="action-btn btn-delete" title="ลบ"><Trash2 size={15} /></button>
                     </div>
                   </td>
                 </tr>
@@ -404,7 +453,7 @@ export default function AdminManagement({ onNavigate }) {
                   <td data-label="จัดการ">
                     <div className="action-cell">
                       <button onClick={() => startEditCar(car)} className="action-btn btn-edit"><Edit3 size={15} /></button>
-                      <button onClick={() => handleDeleteVehicle(car)} className="action-btn btn-delete"><Trash2 size={15} /></button>
+                      <button onClick={() => askDeleteVehicle(car)} className="action-btn btn-delete"><Trash2 size={15} /></button>
                     </div>
                   </td>
                 </tr>
@@ -420,7 +469,7 @@ export default function AdminManagement({ onNavigate }) {
             <h3 className="admin-section-title" style={{ margin: 0 }}>ประวัติคิวจองรถยนต์</h3>
 
             {selectedBookingIds.length > 0 && (
-              <button onClick={handleDeleteBatchBookings} className="admin-batch-delete-btn">
+              <button onClick={askDeleteBatchBookings} className="admin-batch-delete-btn">
                 <Trash2 size={14} /> ลบที่เลือก ({selectedBookingIds.length})
               </button>
             )}
@@ -485,7 +534,7 @@ export default function AdminManagement({ onNavigate }) {
 
                       <td data-label="สถานะ" style={{ textAlign: "center" }}>
                         {!b.vehicle_id ? (
-                          <span className="admin-pill is-neutral" style={{ backgroundColor: "#F3F4F6", color: "#4B5563", border: "1px solid #D1D5DB" }}> ไม่พบข้อมูลรถ (ลบแล้ว)</span>
+                          <span className="admin-pill is-neutral" style={{ backgroundColor: "#F3F4F6", color: "#4B5563", border: "1px solid #D1D5DB" }}>🚫 ไม่พบข้อมูลรถ (ลบแล้ว)</span>
                         ) : isCancelled ? (
                           <span className="admin-pill is-cancelled">ยกเลิก</span>
                         ) : isCurrentlyActive ? (
@@ -500,7 +549,7 @@ export default function AdminManagement({ onNavigate }) {
                       <td data-label="จัดการ">
                         <div className="action-cell">
                           <button
-                            onClick={() => handleDeleteSingleBooking(b.id)}
+                            onClick={() => askDeleteSingleBooking(b.id)}
                             title="ลบประวัตินี้"
                             className="action-btn btn-delete"
                           >
@@ -517,6 +566,60 @@ export default function AdminManagement({ onNavigate }) {
         </div>
       )}
 
+      {/* 🟢 MODAL แจ้งเตือนผลการทำงาน (แทน alert เดิม) */}
+      {noticeModal && (
+        <div className="modal-overlay" onClick={() => setNoticeModal(null)} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.65)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 3500, backdropFilter: "blur(4px)" }}>
+          <div className="fg-rise" style={{ maxWidth: "380px", width: "90%", backgroundColor: "#fff", padding: "24px", borderRadius: "16px", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)", border: `1px solid ${noticeModal.isError ? "#fee2e2" : "#d1fae5"}` }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+              <div style={{ width: "52px", height: "52px", borderRadius: "50%", backgroundColor: noticeModal.isError ? "#fef2f2" : "#ecfdf5", display: "flex", alignItems: "center", justifyContent: "center", color: noticeModal.isError ? "#dc2626" : "#059669", marginBottom: "12px" }}>
+                {noticeModal.isError ? <AlertTriangle size={28} /> : <CheckCircle2 size={28} />}
+              </div>
+              <h3 style={{ margin: "0 0 6px 0", fontSize: "18px", fontWeight: "800", color: noticeModal.isError ? "#991b1b" : "#065f46" }}>{noticeModal.title}</h3>
+              <p style={{ margin: "0 0 20px 0", fontSize: "13.5px", color: "#4b5563", lineHeight: "1.5" }}>{noticeModal.message}</p>
+            </div>
+            <button 
+              type="button" 
+              onClick={() => setNoticeModal(null)}
+              style={{ width: "100%", padding: "10px", backgroundColor: noticeModal.isError ? "#dc2626" : "#059669", color: "#fff", border: "none", borderRadius: "8px", fontWeight: "700", cursor: "pointer", fontSize: "14px", boxShadow: noticeModal.isError ? "0 4px 12px rgba(220, 38, 38, 0.3)" : "0 4px 12px rgba(5, 150, 105, 0.3)" }}
+            >
+              ตกลง
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 🔴 POPUP MODAL ยืนยันการลบตรงกลางหน้าจอ */}
+      {deleteConfirmConfig && (
+        <div className="modal-overlay" onClick={() => setDeleteConfirmConfig(null)} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.65)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 3000, backdropFilter: "blur(4px)" }}>
+          <div className="fg-rise" style={{ maxWidth: "420px", width: "90%", backgroundColor: "#fff", padding: "24px", borderRadius: "16px", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)", border: "1px solid #fee2e2" }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+              <div style={{ width: "52px", height: "52px", borderRadius: "50%", backgroundColor: "#fef2f2", display: "flex", alignItems: "center", justifyContent: "center", color: "#dc2626", marginBottom: "12px" }}>
+                <AlertTriangle size={28} />
+              </div>
+              <h3 style={{ margin: "0 0 6px 0", fontSize: "18px", fontWeight: "800", color: "#991b1b" }}>{deleteConfirmConfig.title}</h3>
+              <p style={{ margin: "0 0 20px 0", fontSize: "13.5px", color: "#4b5563", lineHeight: "1.5" }}>{deleteConfirmConfig.message}</p>
+            </div>
+            <div style={{ display: "flex", gap: "10px" }}>
+              <button 
+                type="button" 
+                onClick={() => setDeleteConfirmConfig(null)}
+                style={{ flex: 1, padding: "10px", backgroundColor: "#fff", color: "#4b5563", border: "1px solid #d1d5db", borderRadius: "8px", fontWeight: "700", cursor: "pointer", fontSize: "14px" }}
+              >
+                ยกเลิก
+              </button>
+              <button 
+                type="button" 
+                onClick={deleteConfirmConfig.onConfirm}
+                style={{ flex: 1, padding: "10px", backgroundColor: "#dc2626", color: "#fff", border: "none", borderRadius: "8px", fontWeight: "700", cursor: "pointer", fontSize: "14px", boxShadow: "0 4px 12px rgba(220, 38, 38, 0.3)" }}
+              >
+                ยืนยันการลบ
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* POPUP MODAL: ฟอร์มพนักงาน */}
       {isEmpModalOpen && (
         <div className="modal-overlay">
           <div className="fg-rise admin-modal-card" style={{ maxWidth: "500px" }}>
@@ -560,6 +663,7 @@ export default function AdminManagement({ onNavigate }) {
         </div>
       )}
 
+      {/* POPUP MODAL: ฟอร์มรถยนต์ */}
       {isCarModalOpen && (
         <div className="modal-overlay">
           <div className="fg-rise admin-modal-card" style={{ maxWidth: "550px", maxHeight: "90vh", overflowY: "auto" }}>

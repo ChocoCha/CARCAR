@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import MainLayout from "../layouts/MainLayout";
-import { Clock, Calendar, User, KeyRound, Tag, Eye, Trash2, X, ClipboardList, History, Maximize2 } from "lucide-react";
+import { Clock, Calendar, User, KeyRound, Tag, Eye, Trash2, X, ClipboardList, History, Maximize2, AlertTriangle, CheckCircle } from "lucide-react";
 
 export default function MyBookings({ onNavigate }) {
   const API_BASE = `http://${window.location.hostname}:5000/api`;
@@ -21,6 +21,10 @@ export default function MyBookings({ onNavigate }) {
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [zoomedImage, setZoomedImage] = useState(null);
+
+  // 🟢 State สำหรับ Modal ยืนยันยกเลิก & Modal ทำรายการสำเร็จ
+  const [cancelConfirmTarget, setCancelConfirmTarget] = useState(null); // { id, modelName }
+  const [actionSuccessMessage, setActionSuccessMessage] = useState(null);
 
   useEffect(() => {
     fetchLatestUserProfile();
@@ -78,16 +82,24 @@ export default function MyBookings({ onNavigate }) {
     }
   }
 
-  async function handleCancelBooking(bookingId, modelName) {
-    if (!confirm(`ยืนยันคำขอยกเลิกการจองคิวรถยนต์ [ ${modelName} ] ใช่หรือไม่?`)) return;
+  // 🟢 กดปุ่ม "ยกเลิกการจอง" ให้เปิดป๊อปอัปยืนยันตรงกลางก่อน
+  function handleRequestCancel(bookingId, modelName) {
+    setCancelConfirmTarget({ id: bookingId, modelName });
+  }
+
+  // 🟢 ฟังก์ชันสั่งยกเลิกจริงเมื่อกดปุ่มยืนยันใน Modal
+  async function executeCancelBooking() {
+    if (!cancelConfirmTarget) return;
+    const { id, modelName } = cancelConfirmTarget;
+    setCancelConfirmTarget(null);
 
     try {
-      const res = await fetch(`${API_BASE}/bookings/${bookingId}/cancel`, {
+      const res = await fetch(`${API_BASE}/bookings/${id}/cancel`, {
         method: "PUT"
       });
 
       if (res.ok) {
-        alert("ยกเลิกการจองรถยนต์สำเร็จเรียบร้อยแล้ว!");
+        setActionSuccessMessage(`ยกเลิกการจองรถยนต์ [ ${modelName} ] เรียบร้อยแล้ว`);
         fetchMyBookings();
       }
     } catch (err) {
@@ -127,7 +139,6 @@ export default function MyBookings({ onNavigate }) {
   ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
   const ninetyDaysAgoStr = getSafeDateStr(ninetyDaysAgo);
 
-  // 🟢 ดึงรหัสพนักงานหรือชื่อผู้จองเพื่อจับคู่ข้อมูลให้ตรงกันแม่นยำ
   const myEmpId = (localStorage.getItem("borrowerEmpId") || "").toLowerCase().trim();
   const myName = (localStorage.getItem("borrowerName") || currentUser || "").toLowerCase().trim();
 
@@ -136,13 +147,11 @@ export default function MyBookings({ onNavigate }) {
     return bookingBorrower === myEmpId || bookingBorrower === myName;
   });
 
-  // 🟢 กรองคิวที่มีผลใช้งานจริง (ซ่อนคิวอนาคตของรถที่โดนลบทิ้ง)
   const validOwnBookings = totalOwnBookings.filter(booking => {
     if (!booking.start_date) return false;
     const startDateStr = getSafeDateStr(booking.start_date);
     const hasVehicle = !!booking.vehicle_id;
 
-    // คิวอนาคตที่ไม่มีตัวรถแล้ว จะถูกกรองออก
     if (!hasVehicle && startDateStr > todayStr) {
       return false;
     }
@@ -153,13 +162,11 @@ export default function MyBookings({ onNavigate }) {
     const endDateStr = getSafeDateStr(booking.end_date);
     const isCancelled = booking.status === 'cancelled';
     const isExpired = endDateStr < todayStr;
-    const isVehicleDeleted = !booking.vehicle_id; // 🟢 รถโดนลบไปแล้ว
+    const isVehicleDeleted = !booking.vehicle_id;
 
     if (activeSubTab === "current") {
-      // รายการปัจจุบัน: รถต้องยังอยู่ + ไม่หมดอายุ + ไม่ยกเลิก
       return !isExpired && !isCancelled && !isVehicleDeleted;
     } else {
-      // ประวัติย้อนหลัง: หมดอายุแล้ว OR ยกเลิก OR รถโดนลบทิ้งไปแล้ว
       const isWithin3Months = endDateStr >= ninetyDaysAgoStr;
       return (isExpired || isCancelled || isVehicleDeleted) && isWithin3Months;
     }
@@ -238,7 +245,7 @@ export default function MyBookings({ onNavigate }) {
                 </button>
 
                 {activeSubTab === "current" && booking.status !== 'cancelled' && !!booking.vehicle_id && (
-                  <button type="button" onClick={() => handleCancelBooking(booking.id, booking.vehicle_model)} className="mybk-btn is-cancel">
+                  <button type="button" onClick={() => handleRequestCancel(booking.id, booking.vehicle_model)} className="mybk-btn is-cancel">
                     <Trash2 size={14} /> ยกเลิกการจอง
                   </button>
                 )}
@@ -247,6 +254,45 @@ export default function MyBookings({ onNavigate }) {
           ))
         )}
       </div>
+
+      {/* 🔴 POPUP MODAL ยืนยันก่อนยกเลิกการจอง (ตรงกลางหน้าจอ) */}
+      {cancelConfirmTarget && (
+        <div className="modal-overlay" onClick={() => setCancelConfirmTarget(null)} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.65)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 3000, backdropFilter: "blur(4px)" }}>
+          <div className="fg-rise" style={{ maxWidth: "420px", width: "90%", backgroundColor: "#fff", padding: "28px", borderRadius: "16px", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)", border: "1px solid #fee2e2", textAlign: "center" }} onClick={e => e.stopPropagation()}>
+            <div style={{ width: "56px", height: "56px", borderRadius: "50%", backgroundColor: "#fef2f2", display: "flex", alignItems: "center", justifyContent: "center", color: "#dc2626", margin: "0 auto 16px auto" }}>
+              <AlertTriangle size={32} />
+            </div>
+            <h3 style={{ margin: "0 0 8px 0", fontSize: "19px", fontWeight: "800", color: "#991b1b" }}>ยืนยันยกเลิกการจอง?</h3>
+            <p style={{ margin: "0 0 20px 0", fontSize: "14px", color: "#4b5563" }}>
+              คุณต้องการยกเลิกการจองรถยนต์ <strong style={{ color: "#111827" }}>[{cancelConfirmTarget.modelName}]</strong> ใช่หรือไม่?
+            </p>
+            <div style={{ display: "flex", gap: "10px" }}>
+              <button type="button" onClick={() => setCancelConfirmTarget(null)} style={{ flex: 1, padding: "10px", backgroundColor: "#f3f4f6", color: "#374151", border: "none", borderRadius: "8px", fontWeight: "600", cursor: "pointer", fontSize: "14px" }}>
+                ยกเลิก
+              </button>
+              <button type="button" onClick={executeCancelBooking} style={{ flex: 1, padding: "10px", backgroundColor: "#dc2626", color: "#fff", border: "none", borderRadius: "8px", fontWeight: "700", cursor: "pointer", fontSize: "14px", boxShadow: "0 4px 12px rgba(220, 38, 38, 0.3)" }}>
+                ยืนยันการยกเลิก
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🟢 POPUP MODAL ยกเลิกสำเร็จ (ตรงกลางหน้าจอ) */}
+      {actionSuccessMessage && (
+        <div className="modal-overlay" onClick={() => setActionSuccessMessage(null)} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.65)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 3000, backdropFilter: "blur(4px)" }}>
+          <div className="fg-rise" style={{ maxWidth: "400px", width: "90%", backgroundColor: "#fff", padding: "28px", borderRadius: "16px", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)", border: "1px solid #dcfce7", textAlign: "center" }} onClick={e => e.stopPropagation()}>
+            <div style={{ width: "56px", height: "56px", borderRadius: "50%", backgroundColor: "#f0fdf4", display: "flex", alignItems: "center", justifyContent: "center", color: "#16a34a", margin: "0 auto 16px auto" }}>
+              <CheckCircle size={32} />
+            </div>
+            <h3 style={{ margin: "0 0 8px 0", fontSize: "20px", fontWeight: "800", color: "#15803d" }}>ทำรายการสำเร็จ</h3>
+            <p style={{ margin: "0 0 24px 0", fontSize: "14px", color: "#4b5563" }}>{actionSuccessMessage}</p>
+            <button type="button" onClick={() => setActionSuccessMessage(null)} style={{ width: "100%", padding: "12px", backgroundColor: "#16a34a", color: "#fff", border: "none", borderRadius: "10px", fontWeight: "700", cursor: "pointer", fontSize: "15px" }}>
+              ตกลง
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* POPUP MODALS รายละเอียดรูปภาพรถยนต์ */}
       {isModalOpen && selectedBooking && (
@@ -258,7 +304,6 @@ export default function MyBookings({ onNavigate }) {
             </div>
             <div className="modal-body">
               <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-
                 <div
                   onClick={() => setZoomedImage(selectedBooking.image)}
                   title="คลิกส่องดูรูปขนาดใหญ่"
@@ -278,11 +323,9 @@ export default function MyBookings({ onNavigate }) {
                 <div>
                   <h3 className="mybk-detail-title">{selectedBooking.vehicle_model}</h3>
                   <p className="mybk-detail-row"><strong>รหัสคิวการจอง:</strong> BOOK-{selectedBooking.id}</p>
-
                   <p className="mybk-detail-row">
                     <strong>ผู้ขอใช้สิทธิ์:</strong> <span className="mybk-detail-highlight">{selectedBooking.borrower_real_name || currentUser}</span>
                   </p>
-
                   <p className="mybk-detail-row"><strong>กำหนดวันเริ่มต้นคิว:</strong> {formatDate(selectedBooking.start_date)}</p>
                   <p className="mybk-detail-row"><strong>กำหนดวันสิ้นสุดคิว:</strong> {formatDate(selectedBooking.end_date)}</p>
                   <p className="mybk-detail-row">

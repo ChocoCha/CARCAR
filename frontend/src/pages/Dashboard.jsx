@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import MainLayout from "../layouts/MainLayout";
 import VehicleCard from "../components/VehicleCard";
-import { X, User, Eye, Maximize2, AlertTriangle, ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
+import { X, User, Eye, Maximize2, AlertTriangle, ChevronLeft, ChevronRight, ArrowRight, PhoneCall, Calendar, AlertCircle, CheckCircle } from "lucide-react";
 import "../styles/vehicle.css";
 
-export default function Dashboard({ onNavigate }) { 
+export default function Dashboard({ onNavigate }) {
   const API_BASE = `http://${window.location.hostname}:5000/api`;
 
   const getImageUrl = (imagePath) => {
@@ -20,7 +20,8 @@ export default function Dashboard({ onNavigate }) {
 
   const [vehicles, setVehicles] = useState([]);
   const [bookings, setBookings] = useState([]);
-  
+  const [employees, setEmployees] = useState([]);
+
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [modalMode, setModalMode] = useState(null);
 
@@ -28,6 +29,11 @@ export default function Dashboard({ onNavigate }) {
   const [endDate, setEndDate] = useState("");
 
   const [zoomedImage, setZoomedImage] = useState(null);
+
+  // 🟢 State สำหรับเก็บข้อมูลคิวจองที่ซ้ำ เพื่อนำมาโชว์ป๊อปอัปแจ้งเตือนตรงกลาง
+  const [conflictBooking, setConflictBooking] = useState(null);
+  const [bookingSuccess, setBookingSuccess] = useState(null);
+  const [bookingError, setBookingError] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -39,8 +45,9 @@ export default function Dashboard({ onNavigate }) {
     try {
       const res = await fetch(`${API_BASE}/employees`);
       if (res.ok) {
-        const employees = await res.json();
-        const me = employees.find(emp => emp.id?.toString().trim().toUpperCase() === borrowerEmpId.toString().trim().toUpperCase());
+        const employeesList = await res.json();
+        setEmployees(employeesList);
+        const me = employeesList.find(emp => emp.id?.toString().trim().toUpperCase() === borrowerEmpId.toString().trim().toUpperCase());
         if (me && me.name) {
           setCurrentUser(me.name);
           localStorage.setItem("borrowerName", me.name);
@@ -56,18 +63,18 @@ export default function Dashboard({ onNavigate }) {
       const resVehicles = await fetch(`${API_BASE}/vehicles`);
       if (!resVehicles.ok) throw new Error("ดึงข้อมูลรถไม่สำเร็จ");
       const dataVehicles = await resVehicles.json();
-      
+
       const formattedVehicles = Array.isArray(dataVehicles) ? dataVehicles.map(v => ({
         ...v,
         image: getImageUrl(v.image)
       })) : [];
-      
+
       setVehicles(formattedVehicles);
 
       const resBookings = await fetch(`${API_BASE}/bookings`);
       if (!resBookings.ok) throw new Error("ดึงข้อมูลคิวจองไม่สำเร็จ");
       const dataBookings = await resBookings.json();
-      
+
       if (Array.isArray(dataBookings)) {
         const formattedBookings = dataBookings.map(b => {
           const formatDateToLocal = (dateStr) => {
@@ -81,11 +88,12 @@ export default function Dashboard({ onNavigate }) {
 
           return {
             id: b.id,
-            vehicleId: b.vehicle_id || b.vehicleId, 
+            vehicleId: b.vehicle_id || b.vehicleId,
             vehicleModel: b.vehicle_model || b.vehicleModel,
             startDate: formatDateToLocal(b.start_date),
             endDate: formatDateToLocal(b.end_date),
             borrower: b.borrower,
+            borrowerRealName: b.borrower_real_name || b.borrower,
             status: b.status,
             color: b.vehicle_id === "v1" ? "#F59E0B" : b.vehicle_id === "v2" ? "#10B981" : b.vehicle_id === "v3" ? "#3B82F6" : "#EC4899"
           };
@@ -107,7 +115,7 @@ export default function Dashboard({ onNavigate }) {
     today.setHours(0, 0, 0, 0);
     const expiry = new Date(expiryDateStr);
     expiry.setHours(0, 0, 0, 0);
-    
+
     const diffTime = expiry - today;
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
@@ -134,46 +142,58 @@ export default function Dashboard({ onNavigate }) {
   async function handleConfirmBooking(e) {
     e.preventDefault();
     if (!startDate || !endDate) {
-      alert("กรุณาระบุวันเวลาจองให้ครบถ้วน");
+      setBookingError("กรุณาระบุวันเวลาจองให้ครบถ้วน"); // 🟢 เปลี่ยนจาก alert
       return;
     }
 
     if (new Date(startDate) > new Date(endDate)) {
-      alert("ข้อผิดพลาด: วันเริ่มต้นจองรถต้องไม่เลยวันสิ้นสุดการจอง");
-      return;
-    }
+    setBookingError("ข้อผิดพลาด: วันเริ่มต้นจองรถต้องไม่เลยวันสิ้นสุดการจอง"); // 🟢 เปลี่ยนจาก alert
+    return;
+  }
 
-    const isOverlapping = bookings.some((booking) => {
+    // 🟢 เช็กว่ามีคิวติดจองซ้ำหรือไม่
+    const existingConflict = bookings.find((booking) => {
       if (booking.vehicleId !== selectedVehicle.id) return false;
       if (booking.status === 'cancelled') return false;
       return startDate <= booking.endDate && endDate >= booking.startDate;
     });
 
-    if (isOverlapping) {
-      alert(`ไม่สามารถจองได้: รถยนต์คันนี้ถูกจองแล้ว`);
+    if (existingConflict) {
+      const matchEmp = employees.find(emp => emp.id?.toString().toLowerCase().trim() === existingConflict.borrower?.toString().toLowerCase().trim());
+
+      setConflictBooking({
+        ...existingConflict,
+        borrowerName: existingConflict.borrowerRealName || (matchEmp ? matchEmp.name : existingConflict.borrower),
+        dept: matchEmp ? matchEmp.dept : "ไม่ระบุแผนก"
+      });
       return;
     }
+
+    // 🟢 ดึงแผนกของผู้ใช้งานจากสเตต employees หรือ localStorage
+    const currentEmpId = localStorage.getItem("borrowerEmpId");
+    const myEmpInfo = employees.find(emp => emp.id?.toString().toLowerCase().trim() === currentEmpId?.toString().toLowerCase().trim());
+    const userDept = myEmpInfo ? myEmpInfo.dept : (localStorage.getItem("userDept") || "");
 
     try {
       const response = await fetch(`${API_BASE}/bookings`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          vehicleId: selectedVehicle.id,
-          vehicleModel: selectedVehicle.model,
-          startDate: startDate,
-          endDate: endDate,
-          borrower: localStorage.getItem("borrowerEmpId") || localStorage.getItem("borrowerName")
+          vehicle_id: selectedVehicle.id,
+          vehicle_model: selectedVehicle.model,
+          start_date: startDate,
+          end_date: endDate,
+          borrower: currentEmpId || localStorage.getItem("borrowerName") || "ADMIN",
+          dept: userDept
         })
       });
 
       if (response.ok) {
-        alert(`ทำการจองรถยนต์ ${selectedVehicle.model} สำเร็จแล้ว!`);
+        setBookingSuccess(`ทำการจองรถยนต์ ${selectedVehicle.model} สำเร็จแล้ว!`);
         setModalMode(null);
         setSelectedVehicle(null);
         setStartDate("");
         setEndDate("");
-        onNavigate("bookings"); 
       } else {
         alert("เซิร์ฟเวอร์หลังบ้านบันทึกไม่สำเร็จ");
       }
@@ -182,7 +202,6 @@ export default function Dashboard({ onNavigate }) {
     }
   }
 
-  // 🟢 คำนวณวันปัจจุบัน YYYY-MM-DD
   const todayStr = (() => {
     const d = new Date();
     const yyyy = d.getFullYear();
@@ -191,7 +210,6 @@ export default function Dashboard({ onNavigate }) {
     return `${yyyy}-${mm}-${dd}`;
   })();
 
-  // 🟢 คำนวณสถิติเฉพาะคิวจองที่กำลังใช้งานอยู่จริง (ไม่นับคิวที่ยกเลิก และคิวที่หมดอายุแล้ว)
   const activeBookingsCount = bookings.filter(b => {
     if (b.status === "cancelled") return false;
     return b.endDate >= todayStr;
@@ -210,11 +228,17 @@ export default function Dashboard({ onNavigate }) {
     setEndDate("");
   }
 
+  const formatDateDisplay = (dateStr) => {
+    if (!dateStr) return "";
+    const [y, m, d] = dateStr.split("-");
+    return `${parseInt(d)}/${parseInt(m)}/${parseInt(y) + 543}`;
+  };
+
   return (
-    <MainLayout 
-      activePage="dashboard" 
-      onNavigate={onNavigate} 
-      title="รถยนต์ทั้งหมด" 
+    <MainLayout
+      activePage="dashboard"
+      onNavigate={onNavigate}
+      title="รถยนต์ทั้งหมด"
       subtitle="เลือกรถยนต์สำหรับการจองของคุณ"
     >
       {/* ==================== HERO BANNER ==================== */}
@@ -223,15 +247,13 @@ export default function Dashboard({ onNavigate }) {
           <div className="hero-photo-top">
             <div className="hero-brand-mark">
               <span className="hero-brand-gem" />
-              System Prime 
+              System Prime
             </div>
           </div>
           <div className="hero-photo-bottom">
-           
             <h2 className="hero-welcome">
               ยินดีต้อนรับ <strong>{currentUser}</strong>
             </h2>
-            
           </div>
         </div>
 
@@ -290,11 +312,11 @@ export default function Dashboard({ onNavigate }) {
                 </div>
               )}
 
-              <VehicleCard 
-                vehicle={vehicle} 
-                onView={handleView} 
-                onSelect={handleSelect} 
-                onRefreshData={fetchData} 
+              <VehicleCard
+                vehicle={vehicle}
+                onView={handleView}
+                onSelect={handleSelect}
+                onRefreshData={fetchData}
               />
             </div>
           );
@@ -311,16 +333,16 @@ export default function Dashboard({ onNavigate }) {
             </div>
             <div className="modal-body">
               <div className="modal-vehicle-detailed-panel">
-                <div 
+                <div
                   onClick={() => setZoomedImage(selectedVehicle.image)}
                   title="คลิกเพื่อส่องดูรูปขนาดใหญ่"
                   style={{ width: "100%", aspectRatio: "16 / 10", borderRadius: "12px", overflow: "hidden", border: "1px solid #e5e7eb", backgroundColor: "#f9fafb", position: "relative", cursor: "pointer", display: "flex" }}
                 >
-                  <img 
-                    src={selectedVehicle.image} 
-                    alt={selectedVehicle.model} 
+                  <img
+                    src={selectedVehicle.image}
+                    alt={selectedVehicle.model}
                     style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center" }}
-                    onError={(e)=>{e.target.src="https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=600"}} 
+                    onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=600" }}
                   />
                   <div style={{ position: "absolute", bottom: "10px", right: "10px", backgroundColor: "rgba(0, 0, 0, 0.65)", color: "#fff", padding: "4px 10px", borderRadius: "6px", fontSize: "11px", display: "flex", alignItems: "center", gap: "4px", fontWeight: "500" }}>
                     <Maximize2 size={12} /> คลิกขยายรูป
@@ -349,9 +371,9 @@ export default function Dashboard({ onNavigate }) {
         return (
           <div className="booking-fullscreen-overlay" onClick={() => setModalMode(null)}>
             <div className="booking-split-card fg-rise" onClick={e => e.stopPropagation()}>
-              
-              <div 
-                className="booking-panel-image" 
+
+              <div
+                className="booking-panel-image"
                 style={{ backgroundImage: `url(${selectedVehicle.image})` }}
               >
                 <div className="booking-image-topbar">
@@ -441,19 +463,102 @@ export default function Dashboard({ onNavigate }) {
         );
       })()}
 
+      {/* 🔴 POPUP MODAL แจ้งเตือนเมื่อมีการจองวันซ้ำกัน (โชว์ข้อมูลผู้จองเดิม) */}
+      {conflictBooking && (
+        <div className="modal-overlay" onClick={() => setConflictBooking(null)} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.65)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 3000, backdropFilter: "blur(4px)" }}>
+          <div className="fg-rise" style={{ maxWidth: "420px", width: "90%", backgroundColor: "#fff", padding: "24px", borderRadius: "16px", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)", border: "1px solid #fee2e2" }} onClick={e => e.stopPropagation()}>
+
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+              <div style={{ width: "52px", height: "52px", borderRadius: "50%", backgroundColor: "#fef2f2", display: "flex", alignItems: "center", justifyContent: "center", color: "#dc2626", marginBottom: "12px" }}>
+                <AlertCircle size={28} />
+              </div>
+              <h3 style={{ margin: "0 0 6px 0", fontSize: "18px", fontWeight: "800", color: "#991b1b" }}>ไม่สามารถจองรถยนต์ได้</h3>
+              <p style={{ margin: "0 0 16px 0", fontSize: "13px", color: "#6b7280" }}>ช่วงวันที่คุณระบุตรงกับคิวที่มีผู้ใช้งานอื่นทำการจองไว้แล้ว</p>
+            </div>
+
+            <div style={{ backgroundColor: "#f9fafb", padding: "14px", borderRadius: "12px", border: "1px solid #f3f4f6", display: "flex", flexDirection: "column", gap: "10px", marginBottom: "20px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13.5px", color: "#111827", fontWeight: "700", borderBottom: "1px solid #e5e7eb", paddingBottom: "8px" }}>
+                <User size={16} style={{ color: "#d97706" }} />
+                <span>ผู้จองปัจจุบัน: <strong style={{ color: "#b45309" }}>{conflictBooking.borrowerName}</strong></span>
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12.5px", color: "#4b5563" }}>
+                <PhoneCall size={14} style={{ color: "#2563eb" }} />
+                <span>แผนก: <strong>{conflictBooking.dept}</strong> (รหัส: {conflictBooking.borrower})</span>
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12.5px", color: "#4b5563" }}>
+                <Calendar size={14} style={{ color: "#059669" }} />
+                <span>ช่วงวันที่ติดจอง: <strong style={{ color: "#047857" }}>{formatDateDisplay(conflictBooking.startDate)} - {formatDateDisplay(conflictBooking.endDate)}</strong></span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setConflictBooking(null)}
+              style={{ width: "100%", padding: "10px", backgroundColor: "#dc2626", color: "#fff", border: "none", borderRadius: "8px", fontWeight: "700", cursor: "pointer", fontSize: "14px", boxShadow: "0 4px 12px rgba(220, 38, 38, 0.3)" }}
+            >
+              ตกลง / ปิดหน้าต่าง
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 🟢 POPUP MODAL แจ้งเตือนการจองสำเร็จ (เด้งตรงกลางหน้าจอ สวยงาม) */}
+      {bookingSuccess && (
+        <div className="modal-overlay" onClick={() => { setBookingSuccess(null); onNavigate("bookings"); }} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.65)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 3000, backdropFilter: "blur(4px)" }}>
+          <div className="fg-rise" style={{ maxWidth: "400px", width: "90%", backgroundColor: "#fff", padding: "28px", borderRadius: "16px", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)", border: "1px solid #dcfce7", textAlign: "center" }} onClick={e => e.stopPropagation()}>
+
+            <div style={{ width: "56px", height: "56px", borderRadius: "50%", backgroundColor: "#f0fdf4", display: "flex", alignItems: "center", justifyContent: "center", color: "#16a34a", margin: "0 auto 16px auto" }}>
+              <CheckCircle size={32} />
+            </div>
+
+            <h3 style={{ margin: "0 0 8px 0", fontSize: "20px", fontWeight: "800", color: "#15803d" }}>บันทึกการจองสำเร็จ!</h3>
+            <p style={{ margin: "0 0 24px 0", fontSize: "14px", color: "#4b5563", lineHeight: "1.5" }}>{bookingSuccess}</p>
+
+            <button
+              type="button"
+              onClick={() => {
+                setBookingSuccess(null);
+                onNavigate("bookings");
+              }}
+              style={{ width: "100%", padding: "12px", backgroundColor: "#16a34a", color: "#fff", border: "none", borderRadius: "10px", fontWeight: "700", cursor: "pointer", fontSize: "15px", boxShadow: "0 4px 12px rgba(22, 163, 74, 0.3)" }}
+            >
+              ตกลง / ไปยังรายการจองของคุณ
+            </button>
+
+          </div>
+        </div>
+      )}
+
+      {bookingError && (
+  <div className="modal-overlay" onClick={() => setBookingError(null)} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.65)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 3000, backdropFilter: "blur(4px)" }}>
+    <div className="fg-rise" style={{ maxWidth: "400px", width: "90%", backgroundColor: "#fff", padding: "28px", borderRadius: "16px", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)", border: "1px solid #fee2e2", textAlign: "center" }} onClick={e => e.stopPropagation()}>
+      <div style={{ width: "56px", height: "56px", borderRadius: "50%", backgroundColor: "#fef2f2", display: "flex", alignItems: "center", justifyContent: "center", color: "#dc2626", margin: "0 auto 16px auto" }}>
+        <AlertCircle size={32} />
+      </div>
+      <h3 style={{ margin: "0 0 8px 0", fontSize: "19px", fontWeight: "800", color: "#991b1b" }}>แจ้งเตือนข้อมูลไม่ถูกต้อง</h3>
+      <p style={{ margin: "0 0 24px 0", fontSize: "14px", color: "#4b5563", lineHeight: "1.5" }}>{bookingError}</p>
+      <button type="button" onClick={() => setBookingError(null)} style={{ width: "100%", padding: "12px", backgroundColor: "#dc2626", color: "#fff", border: "none", borderRadius: "10px", fontWeight: "700", cursor: "pointer", fontSize: "15px" }}>
+        ตกลง / แก้ไขข้อมูล
+      </button>
+    </div>
+  </div>
+)}
+
       {/* LIGHTBOX ขยายรูปภาพ */}
       {zoomedImage && (
-        <div 
-          onClick={() => setZoomedImage(null)} 
+        <div
+          onClick={() => setZoomedImage(null)}
           style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000, cursor: "zoom-out" }}
         >
           <button type="button" onClick={() => setZoomedImage(null)} style={{ position: "absolute", top: "20px", right: "24px", background: "none", border: "none", color: "#fff", cursor: "pointer" }}><X size={32} /></button>
           <div style={{ maxWidth: "90%", maxHeight: "85%", borderRadius: "8px", overflow: "hidden" }} onClick={e => e.stopPropagation()}>
-            <img 
-              src={zoomedImage} 
-              alt="Zoomed Vehicle Layout" 
-              style={{ maxWidth: "100%", maxHeight: "80vh", objectFit: "contain", display: "block", backgroundColor: "#fff", padding: "6px", borderRadius: "4px" }} 
-              onError={(e)=>{e.target.src="https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=600"}}
+            <img
+              src={zoomedImage}
+              alt="Zoomed Vehicle Layout"
+              style={{ maxWidth: "100%", maxHeight: "80vh", objectFit: "contain", display: "block", backgroundColor: "#fff", padding: "6px", borderRadius: "4px" }}
+              onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=600" }}
             />
           </div>
         </div>
