@@ -636,7 +636,7 @@ export default function AdminManagement({ onNavigate }) {
               <div style={{ display: "flex", gap: "12px" }}>
                 <div className="admin-field" style={{ flex: 1 }}>
                   <label>แผนก</label>
-                  <input type="text" value={empForm.dept} onChange={e => setEmpForm({ ...empForm, dept: e.target.value })} placeholder="เช่น ฝ่ายบัญชี" className="admin-input" />
+                  <input type="text" value={empForm.dept} onChange={e => setEmpForm({ ...empForm, dept: e.target.value })} placeholder=" ฝ่ายบัญชี" className="admin-input" />
                 </div>
                 <div className="admin-field" style={{ flex: 1 }}>
                   <label>ตำแหน่งสิทธิ์ (Role)</label>
@@ -648,7 +648,7 @@ export default function AdminManagement({ onNavigate }) {
               </div>
               <div className="admin-field">
                 <label>ชื่อผู้ใช้งาน / Username</label>
-                <input type="text" value={empForm.id} onChange={e => setEmpForm({ ...empForm, id: e.target.value })} placeholder="เช่น EMP-1099" required className="admin-input" />
+                <input type="text" value={empForm.id} onChange={e => setEmpForm({ ...empForm, id: e.target.value })} placeholder=" EMP-1099" required className="admin-input" />
               </div>
               <div className="admin-field">
                 <label>รหัสผ่าน</label>
@@ -681,15 +681,15 @@ export default function AdminManagement({ onNavigate }) {
               </div>
               <div className="admin-field">
                 <label>ID(รถยนต์)</label>
-                <input type="text" value={carForm.id} onChange={e => setCarForm({ ...carForm, id: e.target.value })} placeholder="เช่น v5" disabled={!!editingCarId} required className="admin-input" />
+                <input type="text" value={carForm.id} onChange={e => setCarForm({ ...carForm, id: e.target.value })} placeholder=" v5" disabled={!!editingCarId} required className="admin-input" />
               </div>
               <div className="admin-field">
                 <label>รุ่นรถยนต์</label>
-                <input type="text" value={carForm.model} onChange={e => setCarForm({ ...carForm, model: e.target.value })} placeholder="เช่น Toyota Revo" required className="admin-input" />
+                <input type="text" value={carForm.model} onChange={e => setCarForm({ ...carForm, model: e.target.value })} placeholder=" Toyota Revo" required className="admin-input" />
               </div>
               <div className="admin-field">
                 <label>ป้ายทะเบียน</label>
-                <input type="text" value={carForm.plate} onChange={e => setCarForm({ ...carForm, plate: e.target.value })} placeholder="เช่น 3กข-4567 กทม." required className="admin-input" />
+                <input type="text" value={carForm.plate} onChange={e => setCarForm({ ...carForm, plate: e.target.value })} placeholder=" 3กข-4567 กทม." required className="admin-input" />
               </div>
               <div className="admin-field">
                 <label>ความจุที่นั่ง</label>
@@ -698,7 +698,7 @@ export default function AdminManagement({ onNavigate }) {
 
               <div className="admin-field">
                 <label className="accent">เลขที่ พ.ร.บ.</label>
-                <input type="text" value={carForm.act_number} onChange={e => setCarForm({ ...carForm, act_number: e.target.value })} placeholder="เช่น ACT-998877" className="admin-input" />
+                <input type="text" value={carForm.act_number} onChange={e => setCarForm({ ...carForm, act_number: e.target.value })} placeholder=" ACT-998877" className="admin-input" />
               </div>
 
               <div className="admin-field span-2">

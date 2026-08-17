@@ -352,10 +352,10 @@ app.post('/api/bookings', async (req, res) => {
 
         // 🟢 1. ค้นหาผู้ใช้งานแบบครอบคลุม: เช็กทั้ง username และ name
         const [users] = await connection.execute(
-            'SELECT username, name, dept FROM users WHERE LOWER(username) = LOWER(?) OR LOWER(name) = LOWER(?)', 
+            'SELECT username, name, dept FROM users WHERE LOWER(username) = LOWER(?) OR LOWER(name) = LOWER(?)',
             [borrower.trim(), borrower.trim()]
         );
-        
+
         let borrowerRealName = borrower;
         let borrowerDept = '';
 
@@ -391,20 +391,20 @@ app.post('/api/bookings', async (req, res) => {
 
         // 🟢 ข้อความแจ้งเตือน LINE (ปรับแต่งเส้นและไอคอนให้ตรงกลาง สวยงาม)
         const lineMsg = `🚗 [แจ้งเตือนการจองรถ]\n` +
-                        `______________________________\n\n` +
-                        `👤 ผู้จอง: ${borrowerRealName} (${borrower})\n` +
-                        `👨🏻‍💻 แผนก: ${borrowerDept}\n` +
-                        `🚘 รถยนต์: ${vehicle_model}\n` +
-                        `🗓️ ตั้งแต่วันที่: ${formattedStart}\n` +
-                        `🗓️ ถึงวันที่: ${formattedEnd}\n` +
-                        `______________________________`;
-        
+            `______________________________\n\n` +
+            `👤 ผู้จอง: ${borrowerRealName} (${borrower})\n` +
+            `👨🏻‍💻 แผนก: ${borrowerDept}\n` +
+            `🚘 รถยนต์: ${vehicle_model}\n` +
+            `🗓️ ตั้งแต่วันที่: ${formattedStart}\n` +
+            `🗓️ ถึงวันที่: ${formattedEnd}\n` +
+            `______________________________`;
+
         await sendLineNotification(lineMsg);
 
         res.json({ success: true, message: 'บันทึกการจองเรียบร้อยคัป' });
-    } catch (error) { 
+    } catch (error) {
         console.error("Booking Error:", error);
-        res.status(500).json({ error: error.message }); 
+        res.status(500).json({ error: error.message });
     } finally {
         if (connection) await connection.end();
     }
@@ -421,7 +421,7 @@ app.put('/api/bookings/:id/cancel', async (req, res) => {
             `SELECT b.*, u.name AS borrower_real_name, u.dept AS borrower_dept 
              FROM bookings b 
              LEFT JOIN users u ON LOWER(b.borrower) = LOWER(u.username) 
-             WHERE b.id = ?`, 
+             WHERE b.id = ?`,
             [id]
         );
 
@@ -437,19 +437,41 @@ app.put('/api/bookings/:id/cancel', async (req, res) => {
 
             // 🟢 ข้อความแจ้งเตือน LINE
             const lineMsg = `🚫 [แจ้งเตือนยกเลิกการจองรถ]\n` +
-                            `______________________________\n` +
-                            `👤 ผู้ยกเลิกการจองคิว: ${borrowerName} (${b.borrower})\n` +
-                            `👨🏻‍💻 แผนก: ${borrowerDept}\n` +
-                            `🚘  รถยนต์: ${b.vehicle_model}\n` +
-                            `🗓️ คิววันที่: ${formattedStart} \n` +
-                            `🗓️ ถึงวันที่: ${formattedEnd}\n` +
-                            `______________________________`;
+                `______________________________\n` +
+                `👤 ผู้ยกเลิกการจองคิว: ${borrowerName} (${b.borrower})\n` +
+                `👨🏻‍💻 แผนก: ${borrowerDept}\n` +
+                `🚘  รถยนต์: ${b.vehicle_model}\n` +
+                `🗓️ คิววันที่: ${formattedStart} \n` +
+                `🗓️ ถึงวันที่: ${formattedEnd}\n` +
+                `______________________________`;
 
             await sendLineNotification(lineMsg);
         }
 
         res.json({ success: true, message: 'ยกเลิกสิทธิ์การจองเรียบร้อยคัป' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+// 🟢 เพิ่ม Route ลบรายการจองแบบกลุ่ม (Batch Delete)
+app.post('/api/bookings/delete-batch', async (req, res) => {
+    const { ids } = req.body;
+    let connection;
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ success: false, message: 'กรุณาเลือกรายการที่ต้องการลบ' });
+    }
+
+    try {
+        connection = await mysql.createConnection(dbConfig);
+        const placeholders = ids.map(() => '?').join(',');
+        await connection.execute(`DELETE FROM bookings WHERE id IN (${placeholders})`, ids);
+        
+        res.json({ success: true, message: `ลบรายการจองจำนวน ${ids.length} รายการสำเร็จ` });
     } catch (error) { 
+        console.error("Batch Delete Error:", error);
         res.status(500).json({ error: error.message }); 
     } finally {
         if (connection) await connection.end();
@@ -578,29 +600,22 @@ async function checkAndNotifyExpiringACT() {
         let notifyList = [];
 
         rows.forEach((car) => {
-            const days = Number(car.days_left);
-
+            const days = Math.floor(Number(car.days_left));
             let shouldNotify = false;
 
-            if (days <= 0) {
-                // หมดอายุแล้ว หรือหมดอายุวันนี้ -> แจ้งเตือนทุกวัน
+            if (days <= 7) {
+                // 🔴 1. หมดอายุแล้ว หรือเหลือ 7 วันสุดท้าย (<= 7 วัน) -> แจ้งเตือนทุกวัน
                 shouldNotify = true;
-            } else if (days <= 7) {
-                // เหลือ 1 - 7 วัน -> แจ้งเตือนทุกวันเพื่อความชัวร์
+            }
+            else if (days === 30 || days === 60 || days === 90) {
+                // 🟢 2. แจ้งเตือนรอบรายเดือน ครั้งเดียวตอนเหลือ 90, 60 และ 30 วัน
                 shouldNotify = true;
-            } else if (days <= 30) {
-                // เหลือ 8 - 30 วัน -> แจ้งเตือนทุกๆ 5 วัน หรือถ้าใกล้หมดเตือนเลย
-                if (days % 5 === 0 || days <= 10) shouldNotify = true;
-            } else if (days <= 90) {
-                // เหลือ 31 - 90 วัน -> แจ้งเตือนเมื่อเหลือ 60, 45, 30 วัน หรือช่วงสัปดาห์
-                if (days % 15 === 0 || days === 42) shouldNotify = true;
             }
 
             if (shouldNotify) {
                 notifyList.push(car);
             }
         });
-
         if (notifyList.length === 0) {
             console.log("ℹ️ [ACT Check] วันนี้ไม่มีรถที่ถึงรอบการยิงแจ้งเตือน");
             return;
@@ -612,7 +627,7 @@ async function checkAndNotifyExpiringACT() {
             const formattedDate = new Date(car.act_expiry_date).toLocaleDateString('th-TH');
 
             message += `\n\n______________________________\n`;
-            
+
             if (car.days_left < 0) {
                 message += `\n${index + 1}. ${car.model} (${car.plate})\n   ❌ หมดอายุแล้ว (${Math.abs(car.days_left)} วัน)`;
             } else if (car.days_left === 0) {
@@ -622,7 +637,7 @@ async function checkAndNotifyExpiringACT() {
             }
         });
         message += `\n______________________________`;
-        
+
 
         await sendLineNotification(message);
 
@@ -636,13 +651,10 @@ async function checkAndNotifyExpiringACT() {
 app.listen(5000, '0.0.0.0', () => {
     console.log('🚀 API CRUD Server รันเรียบร้อยที่พอร์ต 5000');
 
-    // 1. เช็กทันที 1 รอบตอนเปิด Server (เปิดไว้เพื่อทดสอบ ถ้าไม่อยากให้ยิงตอนเปิดเซิร์ฟให้ลบบรรทัดนี้ออกได้ครับ)
-    //checkAndNotifyExpiringACT();
 
-    // 2. ตั้งเวลาให้ทำงานเฉพาะเวลา 09:00 น. ของทุกวัน
-    // รูปแบบ Cron: 'นาที นาที_ชั่วโมง วัน เดือน วันในสัปดาห์'
-    cron.schedule('0 10 * * *', () => {
-        console.log('⏰ [Cron Job] ได้เวลา 09:00 น. เริ่มตรวจเช็ก พ.ร.บ...');
+    // 🟢 ตั้งเวลาทำงานตอน 09:30 น. (เก้าโมงครึ่ง) ของทุกวัน
+    cron.schedule('30 9 * * *', () => {
+        console.log('⏰ [Cron Job] ได้เวลา 09:30 น. เริ่มตรวจเช็ก พ.ร.บ...');
         checkAndNotifyExpiringACT();
     }, {
         timezone: "Asia/Bangkok" // 🟢 กำหนด Timezone เป็นเวลาไทย
