@@ -447,7 +447,7 @@ body { background: var(--bg); color: var(--ink); }
 .hero-photo-side {
   flex: 1.6;
   position: relative;
-  background-image: url("https://img1.pic.in.th/images/515407813_1540523703989335_9203987289831334387_n.png");
+  background-image: url('/banner.png');
   background-size: cover;
   background-position: center 35%;
   display: flex;

@@ -5,7 +5,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import dotenv from 'dotenv';
-import cron from 'node-cron'; // 🟢 เพิ่มการ import ด้านบนสุดของไฟล์
+import cron from 'node-cron'; 
 
 dotenv.config();
 
@@ -389,7 +389,7 @@ app.post('/api/bookings', async (req, res) => {
         const formattedStart = new Date(start_date).toLocaleDateString('th-TH');
         const formattedEnd = new Date(end_date).toLocaleDateString('th-TH');
 
-        // 🟢 ข้อความแจ้งเตือน LINE (ปรับแต่งเส้นและไอคอนให้ตรงกลาง สวยงาม)
+        // 🟢 ข้อความแจ้งเตือน LINE 
         const lineMsg = `🚗 [แจ้งเตือนการจองรถ]\n` +
             `______________________________\n\n` +
             `👤 ผู้จอง: ${borrowerRealName} (${borrower})\n` +
@@ -401,7 +401,7 @@ app.post('/api/bookings', async (req, res) => {
 
         await sendLineNotification(lineMsg);
 
-        res.json({ success: true, message: 'บันทึกการจองเรียบร้อยคัป' });
+        res.json({ success: true, message: 'บันทึกการจองเรียบร้อย' });
     } catch (error) {
         console.error("Booking Error:", error);
         res.status(500).json({ error: error.message });
@@ -448,7 +448,7 @@ app.put('/api/bookings/:id/cancel', async (req, res) => {
             await sendLineNotification(lineMsg);
         }
 
-        res.json({ success: true, message: 'ยกเลิกสิทธิ์การจองเรียบร้อยคัป' });
+        res.json({ success: true, message: 'ยกเลิกสิทธิ์การจองเรียบร้อย' });
     } catch (error) {
         res.status(500).json({ error: error.message });
     } finally {
