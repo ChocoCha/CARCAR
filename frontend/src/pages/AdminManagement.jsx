@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import MainLayout from "../layouts/MainLayout";
-import { User, Car, Plus, Trash2, Edit3, X, Upload, Layers, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { User, Car, Plus, Trash2, Edit3, X, Upload, Layers, AlertTriangle, CheckCircle2, Gauge, MapPin, Briefcase } from "lucide-react";
 import "../styles/admin.css";
 
 export default function AdminManagement({ onNavigate }) {
@@ -22,10 +22,10 @@ export default function AdminManagement({ onNavigate }) {
   const [isEmpModalOpen, setIsEmpModalOpen] = useState(false);
   const [isCarModalOpen, setIsCarModalOpen] = useState(false);
 
-  // 🟢 State สำหรับป๊อปอัปยืนยันการลบ
+  // State สำหรับป๊อปอัปยืนยันการลบ
   const [deleteConfirmConfig, setDeleteConfirmConfig] = useState(null);
 
-  // 🟢 State สำหรับ Modal แจ้งเตือนผลการทำงาน (แทน alert)
+  // State สำหรับ Modal แจ้งเตือนผลการทำงาน (แทน alert)
   const [noticeModal, setNoticeModal] = useState(null);
 
   const [empForm, setEmpForm] = useState({ id: "", name: "", dept: "", password: "1234", role: "employee" });
@@ -36,6 +36,7 @@ export default function AdminManagement({ onNavigate }) {
     model: "",
     plate: "",
     seats: 4,
+    mileage: 0, // 🟢 เพิ่มไมล์ในฟอร์มรถ
     image: "",
     status: "available",
     act_number: "",
@@ -57,7 +58,6 @@ export default function AdminManagement({ onNavigate }) {
     }
   }
 
-  // Helper สำหรับเรียกโชว์ Modal แจ้งเตือนผลลัพธ์
   function showNotice(title, message, isError = false) {
     setNoticeModal({ title, message, isError });
   }
@@ -152,6 +152,7 @@ export default function AdminManagement({ onNavigate }) {
     formData.append("model", carForm.model);
     formData.append("plate", carForm.plate);
     formData.append("seats", carForm.seats);
+    formData.append("mileage", carForm.mileage || 0); // 🟢 ส่งค่าเลขไมล์
     formData.append("status", carForm.status);
     formData.append("image", carForm.image || "");
 
@@ -214,6 +215,7 @@ export default function AdminManagement({ onNavigate }) {
           model: car.model,
           plate: car.plate,
           seats: car.seats,
+          mileage: car.mileage || 0,
           image: car.image,
           status: nextStatus,
           act_number: car.act_number || "",
@@ -240,6 +242,7 @@ export default function AdminManagement({ onNavigate }) {
       model: car.model,
       plate: car.plate,
       seats: car.seats,
+      mileage: car.mileage || 0, // 🟢 ดึงค่าไมล์ปัจจุบันมาแก้ไข
       image: car.image || "",
       status: car.status || "available",
       act_number: car.act_number || "",
@@ -252,7 +255,7 @@ export default function AdminManagement({ onNavigate }) {
   function closeCarModal() {
     setIsCarModalOpen(false);
     setEditingCarId(null);
-    setCarForm({ id: "", model: "", plate: "", seats: 4, image: "", status: "available", act_number: "", act_expiry_date: "" });
+    setCarForm({ id: "", model: "", plate: "", seats: 4, mileage: 0, image: "", status: "available", act_number: "", act_expiry_date: "" });
     setSelectedFile(null);
   }
 
@@ -404,6 +407,7 @@ export default function AdminManagement({ onNavigate }) {
         </div>
       )}
 
+      {/* ==================== TAB: คลังรถยนต์ (เพิ่มคอลัมน์ไมล์ล่าสุด) ==================== */}
       {activeSubTab === "vehicles" && (
         <div className="admin-table">
           <h3 className="admin-section-title">คลังรถยนต์บริษัท</h3>
@@ -413,6 +417,7 @@ export default function AdminManagement({ onNavigate }) {
                 <th style={{ textAlign: "left" }}>รูป</th>
                 <th style={{ textAlign: "left" }}>รุ่นรถ / ทะเบียน</th>
                 <th style={{ textAlign: "center" }}>ที่นั่ง</th>
+                <th style={{ textAlign: "center" }}>เลขไมล์ที่ใช้งาน</th>
                 <th style={{ textAlign: "center" }}>สถานะ</th>
                 <th style={{ textAlign: "center" }}>จัดการ</th>
               </tr>
@@ -440,6 +445,14 @@ export default function AdminManagement({ onNavigate }) {
                     <div style={{ fontSize: "11px", color: "var(--stone)" }}>{car.plate} ({car.id.toUpperCase()})</div>
                   </td>
                   <td data-label="ที่นั่ง" style={{ textAlign: "center" }}>{car.seats}</td>
+                  
+                  {/* 🟢 แสดงเลขไมล์สะสมล่าสุดของรถยนต์ */}
+                  <td data-label="เลขไมล์ที่ใช้งาน" style={{ textAlign: "center" }}>
+                    <span style={{ backgroundColor: "#FEF3C7", color: "#92400E", padding: "4px 8px", borderRadius: "6px", fontWeight: "700", fontSize: "12px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                      <Gauge size={13} /> {Number(car.mileage || 0).toLocaleString()} ไมล์
+                    </span>
+                  </td>
+
                   <td data-label="สถานะ" style={{ textAlign: "center" }}>
                     <select
                       value={car.status || "available"}
@@ -452,7 +465,7 @@ export default function AdminManagement({ onNavigate }) {
                   </td>
                   <td data-label="จัดการ">
                     <div className="action-cell">
-                      <button onClick={() => startEditCar(car)} className="action-btn btn-edit"><Edit3 size={15} /></button>
+                      <button onClick={() => startEditCar(car)} className="action-btn btn-edit" title="แก้ไขข้อมูล/เลขไมล์"><Edit3 size={15} /></button>
                       <button onClick={() => askDeleteVehicle(car)} className="action-btn btn-delete"><Trash2 size={15} /></button>
                     </div>
                   </td>
@@ -463,10 +476,11 @@ export default function AdminManagement({ onNavigate }) {
         </div>
       )}
 
+      {/* ==================== TAB: ประวัติคิวจองรถทั้งหมด (เพิ่มชื่อ, แผนก, โครงการ, ไมล์ก่อนหลัง) ==================== */}
       {activeSubTab === "all_bookings" && (
         <div className="admin-table">
           <div className="admin-batch-bar">
-            <h3 className="admin-section-title" style={{ margin: 0 }}>ประวัติคิวจองรถยนต์</h3>
+            <h3 className="admin-section-title" style={{ margin: 0 }}>ประวัติคิวจองรถยนต์ทั้งหมด</h3>
 
             {selectedBookingIds.length > 0 && (
               <button onClick={askDeleteBatchBookings} className="admin-batch-delete-btn">
@@ -486,7 +500,8 @@ export default function AdminManagement({ onNavigate }) {
                     className="admin-checkbox"
                   />
                 </th>
-                <th style={{ textAlign: "left" }}>ข้อมูลการจอง</th>
+                <th style={{ textAlign: "left" }}>ข้อมูลการจอง & งานโครงการ</th>
+                <th style={{ textAlign: "left" }}>บันทึกเลขไมล์ (ก่อน / หลัง)</th>
                 <th style={{ textAlign: "center" }}>ช่วงวันที่</th>
                 <th style={{ textAlign: "center" }}>สถานะ</th>
                 <th style={{ textAlign: "center" }}>จัดการ</th>
@@ -495,16 +510,31 @@ export default function AdminManagement({ onNavigate }) {
             <tbody>
               {sortedBookings.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="admin-empty-cell">ยังไม่มีประวัติการจองคิวในระบบ</td>
+                  <td colSpan="6" className="admin-empty-cell">ยังไม่มีประวัติการจองคิวในระบบ</td>
                 </tr>
               ) : (
                 sortedBookings.map(b => {
                   const isChecked = selectedBookingIds.includes(b.id);
                   const startDateStr = getSafeDateStr(b.start_date);
                   const endDateStr = getSafeDateStr(b.end_date);
+                  
+                  // ดึงข้อมูลผู้ใช้งานและแผนก
+                  const matchUser = employees.find(emp => emp.id?.toLowerCase().trim() === b.borrower?.toLowerCase().trim());
+                  const borrowerName = b.borrower_real_name || (matchUser ? matchUser.name : b.borrower);
+                  const borrowerDept = b.dept || (matchUser ? matchUser.dept : "ไม่ระบุแผนก");
+
+                  // การคำนวณเลขไมล์
+                  const hasStart = b.start_mileage !== null && b.start_mileage !== undefined;
+                  const hasReturn = b.returned_mileage !== null && b.returned_mileage !== undefined;
+                  const distanceUsed = (hasStart && hasReturn) ? (Number(b.returned_mileage) - Number(b.start_mileage)) : null;
+
+                  // ตรวจสอบสถานะ
                   const isCancelled = b.status === 'cancelled';
-                  const isExpired = endDateStr < todayStr;
-                  const isCurrentlyActive = b.vehicle_id && !isCancelled && endDateStr >= todayStr && startDateStr <= todayStr;
+                  const isReturned = b.status === 'returned';
+                  const isLateReturned = b.status === 'late_returned';
+                  const isOverdueUnreturned = b.status === 'active' && endDateStr < todayStr;
+                  const isCurrentlyActive = b.status === 'active' && endDateStr >= todayStr && startDateStr <= todayStr;
+                  const isFutureBooking = b.status === 'active' && startDateStr > todayStr;
 
                   return (
                     <tr key={b.id} className={`admin-booking-row ${isChecked ? "is-selected" : ""} ${isCurrentlyActive ? "is-active-row" : ""}`}>
@@ -516,33 +546,71 @@ export default function AdminManagement({ onNavigate }) {
                           className="admin-checkbox"
                         />
                       </td>
-                      <td data-label="ข้อมูลการจอง">
-                        <div className="admin-booking-code">BOOK-{b.id}</div>
-                        <div className="admin-booking-user">
-                          {(() => {
-                            const matchUser = employees.find(emp => emp.id?.toLowerCase().trim() === b.borrower?.toLowerCase().trim());
-                            return b.borrower_real_name || (matchUser ? matchUser.name : b.borrower);
-                          })()}
+
+                      {/* 🟢 ข้อมูลผู้จอง แผนก รุ่นรถ และงานโครงการ */}
+                      <td data-label="ข้อมูลการจอง & งานโครงการ">
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          <span className="admin-booking-code">BOOK-{b.id}</span>
+                          <span style={{ fontWeight: "700", color: "#111827" }}>{borrowerName}</span>
+                          <span style={{ fontSize: "11px", color: "#6B7280" }}>({b.borrower})</span>
                         </div>
-                        <div className="admin-booking-vehicle">{b.vehicle_model}</div>
+                        
+                        <div style={{ display: "flex", gap: "10px", marginTop: "3px", fontSize: "12px", color: "#4B5563" }}>
+                          <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                            <Briefcase size={12} style={{ color: "#2563EB" }} /> {borrowerDept}
+                          </span>
+                          <span style={{ color: "#9CA3AF" }}>•</span>
+                          <span style={{ fontWeight: "600", color: "#D97706" }}>{b.vehicle_model}</span>
+                        </div>
+
+                        {b.destination && (
+                          <div style={{ marginTop: "3px", fontSize: "11.5px", color: "#DC2626", display: "flex", alignItems: "center", gap: "4px" }}>
+                            <MapPin size={12} /> งานโครงการ: <strong>{b.destination}</strong>
+                          </div>
+                        )}
                       </td>
+
+                      {/* 🟢 ข้อมูลเลขไมล์ก่อนและหลัง พร้อมผลคำนวณสุทธิ */}
+                      <td data-label="บันทึกเลขไมล์ (ก่อน / หลัง)">
+                        <div style={{ fontSize: "12px", display: "flex", flexDirection: "column", gap: "2px" }}>
+                          <div style={{ color: "#4B5563" }}>
+                            ก่อนไป: <strong>{hasStart ? `${Number(b.start_mileage).toLocaleString()} ไมล์` : "-"}</strong>
+                          </div>
+                          <div style={{ color: hasReturn ? "#059669" : "#9CA3AF" }}>
+                            ตอนคืน: <strong>{hasReturn ? `${Number(b.returned_mileage).toLocaleString()} ไมล์` : "ยังไม่คืน"}</strong>
+                          </div>
+                          {distanceUsed !== null && (
+                            <div style={{ color: "#B45309", fontWeight: "700", borderTop: "1px dashed #E5E7EB", paddingTop: "2px", marginTop: "2px" }}>
+                              ใช้จริง: +{distanceUsed.toLocaleString()} ไมล์
+                            </div>
+                          )}
+                        </div>
+                      </td>
+
                       <td data-label="ช่วงวันที่" className="admin-date-cell">
                         <div>{new Date(b.start_date).toLocaleDateString('th-TH')}</div>
                         <div className="admin-date-sep">ถึง</div>
                         <div>{new Date(b.end_date).toLocaleDateString('th-TH')}</div>
                       </td>
 
+                      {/* 🟢 สถานะปรับปรุงตรงตามจริง */}
                       <td data-label="สถานะ" style={{ textAlign: "center" }}>
                         {!b.vehicle_id ? (
-                          <span className="admin-pill is-neutral" style={{ backgroundColor: "#F3F4F6", color: "#4B5563", border: "1px solid #D1D5DB" }}>🚫 ไม่พบข้อมูลรถ (ลบแล้ว)</span>
+                          <span className="admin-pill is-neutral" style={{ backgroundColor: "#F3F4F6", color: "#4B5563", border: "1px solid #D1D5DB" }}>ลบรถแล้ว</span>
                         ) : isCancelled ? (
-                          <span className="admin-pill is-cancelled">ยกเลิก</span>
+                          <span className="admin-pill is-cancelled"> ยกเลิกการจอง</span>
+                        ) : isLateReturned ? (
+                          <span className="admin-pill is-cancelled" style={{ backgroundColor: "#fbfee2", color: "#af9e05d8", border: "1px solid #fafa88", fontWeight: "bold" }}> คืนรถล่าช้า</span>
+                        ) : isReturned ? (
+                          <span className="admin-pill" style={{ backgroundColor: "#DCFCE7", color: "#15803D", border: "1px solid #86EFAC", fontWeight: "bold" }}>คืนรถเรียบร้อย</span>
+                        ) : isOverdueUnreturned ? (
+                          <span className="admin-pill" style={{ backgroundColor: "#DC2626", color: "#FFFFFF", fontWeight: "bold" }}>เกินกำหนด (ยังไม่คืน)</span>
                         ) : isCurrentlyActive ? (
-                          <span className="admin-pill is-active" style={{ backgroundColor: "#ECFDF5", color: "#047857", border: "1px solid #A7F3D0", fontWeight: "bold" }}>🟢 ติดจอง (กำลังใช้งาน)</span>
-                        ) : isExpired ? (
-                          <span className="admin-pill is-expired">ครบกำหนด</span>
-                        ) : (
+                          <span className="admin-pill is-active" style={{ backgroundColor: "#ECFDF5", color: "#047857", border: "1px solid #A7F3D0", fontWeight: "bold" }}> กำลังใช้งาน</span>
+                        ) : isFutureBooking ? (
                           <span className="admin-pill is-active">จองล่วงหน้า</span>
+                        ) : (
+                          <span className="admin-pill is-expired">ครบกำหนด</span>
                         )}
                       </td>
 
@@ -566,7 +634,7 @@ export default function AdminManagement({ onNavigate }) {
         </div>
       )}
 
-      {/* 🟢 MODAL แจ้งเตือนผลการทำงาน (แทน alert เดิม) */}
+      {/* ==================== MODAL แจ้งเตือนผล ==================== */}
       {noticeModal && (
         <div className="modal-overlay" onClick={() => setNoticeModal(null)} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.65)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 3500, backdropFilter: "blur(4px)" }}>
           <div className="fg-rise" style={{ maxWidth: "380px", width: "90%", backgroundColor: "#fff", padding: "24px", borderRadius: "16px", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)", border: `1px solid ${noticeModal.isError ? "#fee2e2" : "#d1fae5"}` }} onClick={e => e.stopPropagation()}>
@@ -579,8 +647,8 @@ export default function AdminManagement({ onNavigate }) {
             </div>
             <button 
               type="button" 
-              onClick={() => setNoticeModal(null)}
-              style={{ width: "100%", padding: "10px", backgroundColor: noticeModal.isError ? "#dc2626" : "#059669", color: "#fff", border: "none", borderRadius: "8px", fontWeight: "700", cursor: "pointer", fontSize: "14px", boxShadow: noticeModal.isError ? "0 4px 12px rgba(220, 38, 38, 0.3)" : "0 4px 12px rgba(5, 150, 105, 0.3)" }}
+              onClick={() => setNoticeModal(null)} 
+              style={{ width: "100%", padding: "10px", backgroundColor: noticeModal.isError ? "#dc2626" : "#059669", color: "#fff", border: "none", borderRadius: "8px", fontWeight: "700", cursor: "pointer", fontSize: "14px" }}
             >
               ตกลง
             </button>
@@ -588,7 +656,7 @@ export default function AdminManagement({ onNavigate }) {
         </div>
       )}
 
-      {/* 🔴 POPUP MODAL ยืนยันการลบตรงกลางหน้าจอ */}
+      {/* ==================== MODAL ยืนยันการลบ ==================== */}
       {deleteConfirmConfig && (
         <div className="modal-overlay" onClick={() => setDeleteConfirmConfig(null)} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.65)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 3000, backdropFilter: "blur(4px)" }}>
           <div className="fg-rise" style={{ maxWidth: "420px", width: "90%", backgroundColor: "#fff", padding: "24px", borderRadius: "16px", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)", border: "1px solid #fee2e2" }} onClick={e => e.stopPropagation()}>
@@ -602,14 +670,14 @@ export default function AdminManagement({ onNavigate }) {
             <div style={{ display: "flex", gap: "10px" }}>
               <button 
                 type="button" 
-                onClick={() => setDeleteConfirmConfig(null)}
+                onClick={() => setDeleteConfirmConfig(null)} 
                 style={{ flex: 1, padding: "10px", backgroundColor: "#fff", color: "#4b5563", border: "1px solid #d1d5db", borderRadius: "8px", fontWeight: "700", cursor: "pointer", fontSize: "14px" }}
               >
                 ยกเลิก
               </button>
               <button 
                 type="button" 
-                onClick={deleteConfirmConfig.onConfirm}
+                onClick={deleteConfirmConfig.onConfirm} 
                 style={{ flex: 1, padding: "10px", backgroundColor: "#dc2626", color: "#fff", border: "none", borderRadius: "8px", fontWeight: "700", cursor: "pointer", fontSize: "14px", boxShadow: "0 4px 12px rgba(220, 38, 38, 0.3)" }}
               >
                 ยืนยันการลบ
@@ -619,7 +687,7 @@ export default function AdminManagement({ onNavigate }) {
         </div>
       )}
 
-      {/* POPUP MODAL: ฟอร์มพนักงาน */}
+      {/* ==================== MODAL ฟอร์มพนักงาน ==================== */}
       {isEmpModalOpen && (
         <div className="modal-overlay">
           <div className="fg-rise admin-modal-card" style={{ maxWidth: "500px" }}>
@@ -628,7 +696,6 @@ export default function AdminManagement({ onNavigate }) {
               <button onClick={closeEmpModal} className="close-btn"><X size={20} /></button>
             </div>
             <form onSubmit={handleSaveEmployee} className="admin-form-col">
-
               <div className="admin-field">
                 <label>ชื่อ-นามสกุล</label>
                 <input type="text" value={empForm.name} onChange={e => setEmpForm({ ...empForm, name: e.target.value })} placeholder="ชื่อจริง-นามสกุล" required className="admin-input" />
@@ -636,7 +703,7 @@ export default function AdminManagement({ onNavigate }) {
               <div style={{ display: "flex", gap: "12px" }}>
                 <div className="admin-field" style={{ flex: 1 }}>
                   <label>แผนก</label>
-                  <input type="text" value={empForm.dept} onChange={e => setEmpForm({ ...empForm, dept: e.target.value })} placeholder=" ฝ่ายบัญชี" className="admin-input" />
+                  <input type="text" value={empForm.dept} onChange={e => setEmpForm({ ...empForm, dept: e.target.value })} placeholder="ฝ่ายบัญชี" className="admin-input" />
                 </div>
                 <div className="admin-field" style={{ flex: 1 }}>
                   <label>ตำแหน่งสิทธิ์ (Role)</label>
@@ -648,7 +715,7 @@ export default function AdminManagement({ onNavigate }) {
               </div>
               <div className="admin-field">
                 <label>ชื่อผู้ใช้งาน / Username</label>
-                <input type="text" value={empForm.id} onChange={e => setEmpForm({ ...empForm, id: e.target.value })} placeholder=" EMP-1099" required className="admin-input" />
+                <input type="text" value={empForm.id} onChange={e => setEmpForm({ ...empForm, id: e.target.value })} placeholder="EMP-1099" required className="admin-input" />
               </div>
               <div className="admin-field">
                 <label>รหัสผ่าน</label>
@@ -663,12 +730,12 @@ export default function AdminManagement({ onNavigate }) {
         </div>
       )}
 
-      {/* POPUP MODAL: ฟอร์มรถยนต์ */}
+      {/* ==================== MODAL ฟอร์มรถยนต์ (เพิ่มช่องแก้ไขเลขไมล์) ==================== */}
       {isCarModalOpen && (
         <div className="modal-overlay">
           <div className="fg-rise admin-modal-card" style={{ maxWidth: "550px", maxHeight: "90vh", overflowY: "auto" }}>
             <div className="admin-modal-header">
-              <h3 className="admin-modal-title">{editingCarId ? "แก้ไขข้อมูลสเปครถยนต์" : "เพิ่มรถคันใหม่"}</h3>
+              <h3 className="admin-modal-title">{editingCarId ? "แก้ไขข้อมูลรถยนต์" : "เพิ่มรถคันใหม่"}</h3>
               <button onClick={closeCarModal} className="close-btn"><X size={20} /></button>
             </div>
             <form onSubmit={handleSaveVehicle} className="admin-form-grid">
@@ -680,25 +747,40 @@ export default function AdminManagement({ onNavigate }) {
                 </select>
               </div>
               <div className="admin-field">
-                <label>ID(รถยนต์)</label>
-                <input type="text" value={carForm.id} onChange={e => setCarForm({ ...carForm, id: e.target.value })} placeholder=" v5" disabled={!!editingCarId} required className="admin-input" />
+                <label>ID (รถยนต์)</label>
+                <input type="text" value={carForm.id} onChange={e => setCarForm({ ...carForm, id: e.target.value })} placeholder="v5" disabled={!!editingCarId} required className="admin-input" />
               </div>
               <div className="admin-field">
                 <label>รุ่นรถยนต์</label>
-                <input type="text" value={carForm.model} onChange={e => setCarForm({ ...carForm, model: e.target.value })} placeholder=" Toyota Revo" required className="admin-input" />
+                <input type="text" value={carForm.model} onChange={e => setCarForm({ ...carForm, model: e.target.value })} placeholder="Toyota Revo" required className="admin-input" />
               </div>
               <div className="admin-field">
                 <label>ป้ายทะเบียน</label>
-                <input type="text" value={carForm.plate} onChange={e => setCarForm({ ...carForm, plate: e.target.value })} placeholder=" 3กข-4567 กทม." required className="admin-input" />
+                <input type="text" value={carForm.plate} onChange={e => setCarForm({ ...carForm, plate: e.target.value })} placeholder="3กข-4567 กทม." required className="admin-input" />
               </div>
               <div className="admin-field">
                 <label>ความจุที่นั่ง</label>
                 <input type="number" value={carForm.seats} onChange={e => setCarForm({ ...carForm, seats: parseInt(e.target.value) || 0 })} required className="admin-input" />
               </div>
 
+              {/* 🟢 ช่องกรอก/แก้ไขเลขไมล์สะสมล่าสุด */}
+              <div className="admin-field">
+                <label style={{ display: "flex", alignItems: "center", gap: "4px", color: "#D97706", fontWeight: "700" }}>
+                  <Gauge size={14} /> เลขไมล์ที่ใช้งาน (ไมล์)
+                </label>
+                <input 
+                  type="number" 
+                  value={carForm.mileage} 
+                  onChange={e => setCarForm({ ...carForm, mileage: parseInt(e.target.value) || 0 })} 
+                  min="0"
+                  required 
+                  className="admin-input" 
+                />
+              </div>
+
               <div className="admin-field">
                 <label className="accent">เลขที่ พ.ร.บ.</label>
-                <input type="text" value={carForm.act_number} onChange={e => setCarForm({ ...carForm, act_number: e.target.value })} placeholder=" ACT-998877" className="admin-input" />
+                <input type="text" value={carForm.act_number} onChange={e => setCarForm({ ...carForm, act_number: e.target.value })} placeholder="ACT-998877" className="admin-input" />
               </div>
 
               <div className="admin-field span-2">

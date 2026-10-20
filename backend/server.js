@@ -152,7 +152,7 @@ app.delete('/api/employees/:id', async (req, res) => {
     }
 });
 
-// ==================== [ 3. Vehicles ] ====================
+// ==================== [ 3. Vehicles (กู้คืนกลับมาครบถ้วน) ] ====================
 
 app.get('/api/vehicles', async (req, res) => {
     let connection;
@@ -168,7 +168,7 @@ app.get('/api/vehicles', async (req, res) => {
 });
 
 app.post('/api/vehicles', upload.single('imageFile'), async (req, res) => {
-    const { id, model, plate, seats, status, act_number, act_expiry_date } = req.body;
+    const { id, model, plate, seats, mileage, status, act_number, act_expiry_date } = req.body;
     let imageUrl = req.file ? `/uploads/${req.file.filename}` : '';
     let connection;
 
@@ -179,13 +179,14 @@ app.post('/api/vehicles', upload.single('imageFile'), async (req, res) => {
             return res.status(400).json({ message: 'รหัสรถยนต์ (ID) นี้มีอยู่ในระบบแล้ว' });
         }
         await connection.execute(
-            `INSERT INTO vehicles (id, model, plate, seats, image, status, act_number, act_expiry_date) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO vehicles (id, model, plate, seats, mileage, image, status, act_number, act_expiry_date) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 id.trim().toLowerCase(),
-                model.trim(),
-                plate.trim(),
-                seats || 5,
+                model ? model.trim() : '',
+                plate ? plate.trim() : '',
+                seats ? Number(seats) : 5,
+                mileage !== undefined && mileage !== null ? Number(mileage) : 0,
                 imageUrl,
                 status || 'available',
                 act_number || '',
@@ -200,29 +201,43 @@ app.post('/api/vehicles', upload.single('imageFile'), async (req, res) => {
     }
 });
 
+// 🟢 แก้ไขข้อมูลรถยนต์: รับ mileage และอัปเดตลงตาราง vehicles พร้อมซิงค์คิวที่ยังรอคืน
 app.put('/api/vehicles/:id', upload.single('imageFile'), async (req, res) => {
     const { id } = req.params;
-    const { model, plate, seats, image, status, act_number, act_expiry_date } = req.body;
+    const { model, plate, seats, mileage, image, status, act_number, act_expiry_date } = req.body;
     let imageUrl = req.file ? `/uploads/${req.file.filename}` : image;
     let connection;
 
     try {
         connection = await mysql.createConnection(dbConfig);
-        await connection.execute(
+        const newMileage = mileage !== undefined && mileage !== null ? Number(mileage) : 0;
+
+        // 1. อัปเดตข้อมูลรถยนต์
+        await connection.execute(   
             `UPDATE vehicles 
-                SET model = ?, plate = ?, seats = ?, image = ?, status = ?, act_number = ?, act_expiry_date = ? 
-                WHERE id = ?`,
+             SET model = ?, plate = ?, seats = ?, mileage = ?, image = ?, status = ?, act_number = ?, act_expiry_date = ? 
+             WHERE id = ?`,
             [
                 model ? model.trim() : '',
                 plate ? plate.trim() : '',
-                seats,
+                seats ? Number(seats) : 5,
+                newMileage,
                 imageUrl,
-                status,
+                status || 'available',
                 act_number || '',
                 act_expiry_date || null,
                 id
             ]
         );
+
+        // 🟢 2. ซิงค์เลขไมล์ไปยังคิวจองของรถคันนี้ที่ยังไม่ได้ส่งคืน (status = 'active') ทันที
+        await connection.execute(
+            `UPDATE bookings 
+             SET start_mileage = ? 
+             WHERE vehicle_id = ? AND status = 'active'`,
+            [newMileage, id]
+        );
+
         res.json({ success: true });
     } catch (error) {
         console.error("Error updating vehicle:", error);
@@ -232,7 +247,6 @@ app.put('/api/vehicles/:id', upload.single('imageFile'), async (req, res) => {
     }
 });
 
-// 🟢 แก้ไขคำสั่งลบรถ: ปลด vehicle_id = NULL ให้คิวเริ่มวันนี้และอดีตไว้ก่อน แล้วลบเฉพาะคิวอนาคต (พรุ่งนี้เป็นต้นไป)
 app.delete('/api/vehicles/:id', async (req, res) => {
     const { id } = req.params;
     let connection;
@@ -240,24 +254,20 @@ app.delete('/api/vehicles/:id', async (req, res) => {
         connection = await mysql.createConnection(dbConfig);
         await connection.execute('SET FOREIGN_KEY_CHECKS = 0');
 
-        // 1. คิวที่เริ่มวันนี้ หรือย้อนหลังไปในอดีต (DATE(start_date) <= CURDATE()): ให้เก็บประวัติไว้!
         await connection.execute(
             'UPDATE bookings SET vehicle_id = NULL WHERE vehicle_id = ? AND DATE(start_date) <= CURDATE()',
             [id]
         );
 
-        // 2. คิวที่จองไว้วันพรุ่งนี้เป็นต้นไป (DATE(start_date) > CURDATE()): ลบทิ้งออกจากระบบ
         await connection.execute(
             'DELETE FROM bookings WHERE vehicle_id = ? AND DATE(start_date) > CURDATE()',
             [id]
         );
 
-        // 3. ลบข้อมูลรถออกจากตาราง vehicles
         await connection.execute('DELETE FROM vehicles WHERE id = ?', [id]);
-
         await connection.execute('SET FOREIGN_KEY_CHECKS = 1');
 
-        res.json({ success: true, message: 'ลบข้อมูลรถเรียบร้อยแล้ว โดยยังคงเก็บประวัติของวันนี้และอดีตไว้' });
+        res.json({ success: true, message: 'ลบข้อมูลรถเรียบร้อยแล้ว' });
     } catch (error) {
         console.error("Delete Vehicle Error:", error);
         res.status(500).json({ error: error.message });
@@ -278,6 +288,7 @@ app.put('/api/vehicles/:id/act', async (req, res) => {
         );
         res.json({ success: true, message: 'อัปเดตข้อมูล พ.ร.บ. เรียบร้อย' });
     } catch (error) {
+        console.error("Error updating ACT:", error);
         res.status(500).json({ error: error.message });
     } finally {
         if (connection) await connection.end();
@@ -296,32 +307,27 @@ app.get('/api/bookings', async (req, res) => {
         connection = await mysql.createConnection(dbConfig);
         let rows = [];
 
+        const baseQuery = `
+            SELECT b.*, u.name AS borrower_real_name, u.dept AS dept, v.plate, v.image
+            FROM bookings b
+            LEFT JOIN users u ON LOWER(b.borrower) = LOWER(u.username)
+            LEFT JOIN vehicles v ON b.vehicle_id = v.id
+        `;
+
         if (isMyBookingPage) {
             const [myRows] = await connection.execute(
-                `SELECT b.*, u.name AS borrower_real_name 
-                    FROM bookings b
-                    LEFT JOIN users u ON LOWER(b.borrower) = LOWER(u.username)
-                    WHERE LOWER(b.borrower) = LOWER(?) 
-                    ORDER BY b.start_date DESC`,
+                `${baseQuery} WHERE LOWER(b.borrower) = LOWER(?) ORDER BY b.id DESC`,
                 [borrowerName.trim()]
             );
             rows = myRows;
-        }
-        else if (borrowerName === '' || userRole.trim().toLowerCase() === 'admin' || borrowerName.toLowerCase().includes('admin')) {
+        } else if (borrowerName === '' || userRole.trim().toLowerCase() === 'admin' || borrowerName.toLowerCase().includes('admin')) {
             const [allRows] = await connection.execute(
-                `SELECT b.*, u.name AS borrower_real_name 
-                    FROM bookings b
-                    LEFT JOIN users u ON LOWER(b.borrower) = LOWER(u.username)
-                    ORDER BY b.start_date DESC`
+                `${baseQuery} ORDER BY b.id DESC`
             );
             rows = allRows;
         } else {
             const [myRows] = await connection.execute(
-                `SELECT b.*, u.name AS borrower_real_name 
-                    FROM bookings b
-                    LEFT JOIN users u ON LOWER(b.borrower) = LOWER(u.username)
-                    WHERE (b.status IS NULL OR b.status != 'cancelled')
-                    ORDER BY b.start_date DESC`
+                `${baseQuery} WHERE (b.status IS NULL OR b.status != 'cancelled') ORDER BY b.id DESC`
             );
             rows = myRows;
         }
@@ -334,12 +340,14 @@ app.get('/api/bookings', async (req, res) => {
     }
 });
 
+
 app.post('/api/bookings', async (req, res) => {
-    const vehicle_id = req.body.vehicle_id || req.body.vehicleId || req.body.carId || '';
-    const borrower = req.body.borrower || req.body.user || req.body.username || '';
-    const vehicle_model = req.body.vehicle_model || req.body.vehicleModel || req.body.model || 'ไม่ระบุรุ่นรถ';
-    const start_date = req.body.start_date || req.body.startDate || '';
-    const end_date = req.body.end_date || req.body.endDate || '';
+    const vehicle_id = req.body.vehicle_id || req.body.vehicleId || '';
+    const borrower = req.body.borrower || '';
+    const vehicle_model = req.body.vehicle_model || '';
+    const start_date = req.body.start_date || '';
+    const end_date = req.body.end_date || '';
+    const destination = req.body.destination || 'ไม่ระบุสถานที่';
     const reqDept = req.body.dept || '';
     let connection;
 
@@ -350,51 +358,76 @@ app.post('/api/bookings', async (req, res) => {
     try {
         connection = await mysql.createConnection(dbConfig);
 
-        // 🟢 1. ค้นหาผู้ใช้งานแบบครอบคลุม: เช็กทั้ง username และ name
+        // 🟢 1. ตรวจสอบว่ารถคันนี้มีคิวค้างส่งคืน (เลยกำหนดแล้วแต่ยังเป็น active) หรือไม่
+        const [overdueUnreturned] = await connection.execute(
+            `SELECT b.*, u.name AS borrower_real_name, u.dept AS borrower_dept 
+             FROM bookings b
+             LEFT JOIN users u ON LOWER(b.borrower) = LOWER(u.username)
+             WHERE b.vehicle_id = ? 
+               AND b.status = 'active' 
+               AND DATE(b.end_date) < CURDATE()
+             LIMIT 1`,
+            [vehicle_id]
+        );
+
+        if (overdueUnreturned.length > 0) {
+            const overdueCar = overdueUnreturned[0];
+            const name = overdueCar.borrower_real_name || overdueCar.borrower;
+            return res.status(400).json({
+                success: false,
+                isOverdueBlock: true,
+                message: `ไม่สามารถจองได้: รถยนต์คันนี้กำลังติดใช้งานเกินกำหนดโดยคุณ ${name} และยังไม่มีการกดส่งคืนรถเข้าสู่ระบบ`
+            });
+        }
+
+        // 🟢 2. ตรวจสอบคิวชนตามช่วงวันที่ปกติ (เฉพาะคิวที่ยัง active)
+        const [conflicts] = await connection.execute(
+            `SELECT id FROM bookings 
+             WHERE vehicle_id = ? 
+               AND status = 'active' 
+               AND start_date <= ? AND end_date >= ?`,
+            [vehicle_id, end_date, start_date]
+        );
+
+        if (conflicts.length > 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'ช่วงวันที่คุณเลือกตรงกับคิวที่มีผู้ใช้งานอื่นจองไว้แล้ว'
+            });
+        }
+
+        // ดึงเลขไมล์และดำเนินการบันทึกตามปกติ...
+        const [cars] = await connection.execute('SELECT mileage FROM vehicles WHERE id = ?', [vehicle_id]);
+        const startMileage = (cars.length > 0 && cars[0].mileage != null) ? Number(cars[0].mileage) : 0;
+
         const [users] = await connection.execute(
             'SELECT username, name, dept FROM users WHERE LOWER(username) = LOWER(?) OR LOWER(name) = LOWER(?)',
             [borrower.trim(), borrower.trim()]
         );
 
         let borrowerRealName = borrower;
-        let borrowerDept = '';
-
+        let borrowerDept = reqDept || '';
         if (users.length > 0) {
             borrowerRealName = users[0].name || borrower;
-            borrowerDept = users[0].dept || '';
+            if (!borrowerDept) borrowerDept = users[0].dept || '';
         }
 
-        // 🟢 2. ถ้าหาใน DB ไม่เจอจากตัวแปร borrower ให้ลองเช็กจาก Request Body
-        if (!borrowerDept && reqDept) {
-            borrowerDept = reqDept;
-        }
-
-        // 🟢 3. ถ้ายังหาแผนกไม่เจออีก (กรณีเป็น 'ผู้ดูแลระบบ' หรือ 'ADMIN') ให้ดึงแผนกตั้งต้นของ Admin
-        if (!borrowerDept) {
-            const [adminUsers] = await connection.execute("SELECT dept FROM users WHERE role = 'admin' AND dept IS NOT NULL AND dept != '' LIMIT 1");
-            if (adminUsers.length > 0) {
-                borrowerDept = adminUsers[0].dept;
-            } else {
-                borrowerDept = 'ฝ่ายบริหาร / ไอที'; // ค่าเริ่มต้นถ้าไม่พบแผนกจริงๆ
-            }
-        }
-
-        // บันทึกลงฐานข้อมูล
         await connection.execute(
-            `INSERT INTO bookings (vehicle_id, borrower, vehicle_model, start_date, end_date, status, created_at) 
-            VALUES (?, ?, ?, ?, ?, 'active', NOW())`,
-            [vehicle_id, borrower, vehicle_model, start_date, end_date]
+            `INSERT INTO bookings (vehicle_id, borrower, vehicle_model, start_date, end_date, destination, start_mileage, status, created_at) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, 'active', NOW())`,
+            [vehicle_id, borrower, vehicle_model, start_date, end_date, destination, startMileage]
         );
 
         const formattedStart = new Date(start_date).toLocaleDateString('th-TH');
         const formattedEnd = new Date(end_date).toLocaleDateString('th-TH');
 
-        // 🟢 ข้อความแจ้งเตือน LINE 
         const lineMsg = `🚗 [แจ้งเตือนการจองรถ]\n` +
             `______________________________\n\n` +
             `👤 ผู้จอง: ${borrowerRealName} (${borrower})\n` +
             `👨🏻‍💻 แผนก: ${borrowerDept}\n` +
             `🚘 รถยนต์: ${vehicle_model}\n` +
+            `📍 งานโครงการ: ${destination}\n` +
+            `📟 ไมล์ก่อนเดินทาง: ${startMileage.toLocaleString()} ไมล์\n` +
             `🗓️ ตั้งแต่วันที่: ${formattedStart}\n` +
             `🗓️ ถึงวันที่: ${formattedEnd}\n` +
             `______________________________`;
@@ -410,52 +443,88 @@ app.post('/api/bookings', async (req, res) => {
     }
 });
 
-app.put('/api/bookings/:id/cancel', async (req, res) => {
+// คืนรถ (ไม่มีแจ้งเตือน LINE)
+app.put('/api/bookings/:id/return', async (req, res) => {
     const { id } = req.params;
+    const { mileage } = req.body;
     let connection;
+
+    if (mileage === undefined || mileage === null || isNaN(Number(mileage))) {
+        return res.status(400).json({ success: false, message: 'กรุณาระบุเลขไมล์ที่ถูกต้อง' });
+    }
+
     try {
         connection = await mysql.createConnection(dbConfig);
 
-        // 🟢 Join ตาราง users แบบ LOWER(username) เพื่อดึงแผนก
-        const [bookings] = await connection.execute(
-            `SELECT b.*, u.name AS borrower_real_name, u.dept AS borrower_dept 
-             FROM bookings b 
-             LEFT JOIN users u ON LOWER(b.borrower) = LOWER(u.username) 
-             WHERE b.id = ?`,
-            [id]
-        );
-
-        // อัปเดตสถานะเป็น cancelled
-        await connection.execute("UPDATE bookings SET status = 'cancelled' WHERE id = ?", [id]);
-
-        if (bookings.length > 0) {
-            const b = bookings[0];
-            const borrowerName = b.borrower_real_name || b.borrower;
-            const borrowerDept = b.borrower_dept || 'ไม่ระบุแผนก';
-            const formattedStart = new Date(b.start_date).toLocaleDateString('th-TH');
-            const formattedEnd = new Date(b.end_date).toLocaleDateString('th-TH');
-
-            // 🟢 ข้อความแจ้งเตือน LINE
-            const lineMsg = `🚫 [แจ้งเตือนยกเลิกการจองรถ]\n` +
-                `______________________________\n` +
-                `👤 ผู้ยกเลิกการจองคิว: ${borrowerName} (${b.borrower})\n` +
-                `👨🏻‍💻 แผนก: ${borrowerDept}\n` +
-                `🚘  รถยนต์: ${b.vehicle_model}\n` +
-                `🗓️ คิววันที่: ${formattedStart} \n` +
-                `🗓️ ถึงวันที่: ${formattedEnd}\n` +
-                `______________________________`;
-
-            await sendLineNotification(lineMsg);
+        const [bookings] = await connection.execute('SELECT * FROM bookings WHERE id = ?', [id]);
+        if (bookings.length === 0) {
+            return res.status(404).json({ success: false, message: 'ไม่พบรายการจองนี้' });
         }
 
-        res.json({ success: true, message: 'ยกเลิกสิทธิ์การจองเรียบร้อย' });
+        const b = bookings[0];
+        const newMileage = Number(mileage);
+
+        const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' });
+        
+        const endDateObj = new Date(b.end_date);
+        const yyyy = endDateObj.getFullYear();
+        const mm = String(endDateObj.getMonth() + 1).padStart(2, '0');
+        const dd = String(endDateObj.getDate()).padStart(2, '0');
+        const bookingEndDateStr = `${yyyy}-${mm}-${dd}`;
+
+        const isLate = todayStr > bookingEndDateStr;
+        const finalStatus = isLate ? 'late_returned' : 'returned';
+
+        await connection.execute(
+            "UPDATE bookings SET status = ?, returned_mileage = ? WHERE id = ?",
+            [finalStatus, newMileage, id]
+        );
+
+        if (b.vehicle_id) {
+            await connection.execute(
+                "UPDATE vehicles SET mileage = ? WHERE id = ?",
+                [newMileage, b.vehicle_id]
+            );
+        }
+
+        res.json({ 
+            success: true, 
+            isLate: isLate,
+            message: isLate ? 'คืนรถเรียบร้อย (บันทึกสถานะ: คืนรถล่าช้า)' : 'คืนรถเรียบร้อยตามกำหนดเวลา' 
+        });
     } catch (error) {
+        console.error("Return vehicle error:", error);
         res.status(500).json({ error: error.message });
     } finally {
         if (connection) await connection.end();
     }
 });
-// 🟢 เพิ่ม Route ลบรายการจองแบบกลุ่ม (Batch Delete)
+
+// ยกเลิกการจอง (ไม่มีแจ้งเตือน LINE)
+app.put('/api/bookings/:id/cancel', async (req, res) => {
+    const { id } = req.params;
+    let connection;
+
+    try {
+        connection = await mysql.createConnection(dbConfig);
+
+        const [bookings] = await connection.execute('SELECT id FROM bookings WHERE id = ?', [id]);
+        if (bookings.length === 0) {
+            return res.status(404).json({ success: false, message: 'ไม่พบรายการจองนี้ในระบบ' });
+        }
+
+        await connection.execute("UPDATE bookings SET status = 'cancelled' WHERE id = ?", [id]);
+
+        res.json({ success: true, message: 'ยกเลิกสิทธิ์การจองเรียบร้อยแล้ว' });
+    } catch (error) {
+        console.error("Cancel Booking Error:", error);
+        res.status(500).json({ error: error.message });
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+
+// ลบรายการจองแบบกลุ่ม
 app.post('/api/bookings/delete-batch', async (req, res) => {
     const { ids } = req.body;
     let connection;
@@ -478,6 +547,7 @@ app.post('/api/bookings/delete-batch', async (req, res) => {
     }
 });
 
+// ลบรายการจองเดี่ยว
 app.delete('/api/bookings/:id', async (req, res) => {
     const { id } = req.params;
     let connection;
@@ -499,9 +569,6 @@ app.delete('/api/bookings/:id', async (req, res) => {
 const LINE_CHANNEL_ACCESS_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN || '';
 let ADMIN_LINE_USER_ID = process.env.ADMIN_LINE_USER_ID || '';
 
-/**
- * 1. Route สำหรับรับ Webhook จาก LINE (ไว้ดึง Group ID อัตโนมัติ)
- */
 app.post('/api/line-webhook', async (req, res) => {
     const events = req.body.events || [];
 
@@ -512,7 +579,6 @@ app.post('/api/line-webhook', async (req, res) => {
             console.log("🎯 GROUP ID จริงของคุณคือ:", gid);
             console.log("------------------------------------------");
 
-            // ส่งตอบกลับเข้าไปในกลุ่มไลน์ทันทีเพื่อความสะดวก
             if (event.replyToken) {
                 const token = process.env.LINE_CHANNEL_ACCESS_TOKEN;
                 try {
@@ -535,9 +601,7 @@ app.post('/api/line-webhook', async (req, res) => {
     }
     res.sendStatus(200);
 });
-/**
-* 🟢 ฟังก์ชันส่งแจ้งเตือนเข้า LINE (Push Message)
-*/
+
 async function sendLineNotification(messageText) {
     const token = process.env.LINE_CHANNEL_ACCESS_TOKEN;
     const targetId = process.env.ADMIN_LINE_USER_ID;
@@ -582,7 +646,6 @@ async function checkAndNotifyExpiringACT() {
     try {
         connection = await mysql.createConnection(dbConfig);
 
-        // ดึงรถที่หมดอายุแล้ว (days_left < 0) และรถที่เหลือวันไม่เกิน 90 วัน
         const [rows] = await connection.execute(`
             SELECT id, model, plate, act_number, act_expiry_date,
                    DATEDIFF(act_expiry_date, CURDATE()) AS days_left
@@ -604,11 +667,9 @@ async function checkAndNotifyExpiringACT() {
             let shouldNotify = false;
 
             if (days <= 7) {
-                // 🔴 1. หมดอายุแล้ว หรือเหลือ 7 วันสุดท้าย (<= 7 วัน) -> แจ้งเตือนทุกวัน
                 shouldNotify = true;
             }
             else if (days === 30 || days === 60 || days === 90) {
-                // 🟢 2. แจ้งเตือนรอบรายเดือน ครั้งเดียวตอนเหลือ 90, 60 และ 30 วัน
                 shouldNotify = true;
             }
 
@@ -638,7 +699,6 @@ async function checkAndNotifyExpiringACT() {
         });
         message += `\n______________________________`;
 
-
         await sendLineNotification(message);
 
     } catch (error) {
@@ -650,13 +710,4 @@ async function checkAndNotifyExpiringACT() {
 
 app.listen(5000, '0.0.0.0', () => {
     console.log('🚀 API CRUD Server รันเรียบร้อยที่พอร์ต 5000');
-
-
-    // 🟢 ตั้งเวลาทำงานตอน 09:30 น. (เก้าโมงครึ่ง) ของทุกวัน
-    cron.schedule('30 9 * * *', () => {
-        console.log('⏰ [Cron Job] ได้เวลา 09:30 น. เริ่มตรวจเช็ก พ.ร.บ...');
-        checkAndNotifyExpiringACT();
-    }, {
-        timezone: "Asia/Bangkok" // 🟢 กำหนด Timezone เป็นเวลาไทย
-    });
 });
