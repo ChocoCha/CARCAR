@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from "react";
-// 🟢 เพิ่ม User เข้ามาใน Lucide Icons
 import { LogOut, ChevronDown, Menu, LayoutGrid, CalendarCheck, CalendarDays, ShieldAlert, FileText, User } from "lucide-react";
 
 export default function Navbar({ onNavigate }) {
@@ -7,7 +6,8 @@ export default function Navbar({ onNavigate }) {
   
   const [currentUser, setCurrentUser] = useState(localStorage.getItem("borrowerName") || "ผู้ใช้งานระบบ");
   const userRole = localStorage.getItem("userRole") || "employee";
-  const borrowerEmpId = localStorage.getItem("borrowerEmpId");
+  const borrowerEmpId = (localStorage.getItem("borrowerEmpId") || "").toLowerCase().trim();
+  const borrowerName = (localStorage.getItem("borrowerName") || "").toLowerCase().trim();
   const isAdmin = userRole.trim().toLowerCase() === "admin";
 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -17,9 +17,11 @@ export default function Navbar({ onNavigate }) {
   const mobileMenuRef = useRef(null);
 
   const [warningCount, setWarningCount] = useState(0);
+  const [activeBookingCount, setActiveBookingCount] = useState(0);
 
   useEffect(() => {
     fetchLatestUserProfile();
+    fetchActiveBookingsCount();
   }, []);
 
   async function fetchLatestUserProfile() {
@@ -28,7 +30,7 @@ export default function Navbar({ onNavigate }) {
       const res = await fetch(`${API_BASE}/employees`);
       if (res.ok) {
         const employees = await res.json();
-        const me = employees.find(emp => emp.id?.toString().trim().toUpperCase() === borrowerEmpId.toString().trim().toUpperCase());
+        const me = employees.find(emp => emp.id?.toString().trim().toUpperCase() === borrowerEmpId.toUpperCase());
         if (me && me.name) {
           setCurrentUser(me.name);
           localStorage.setItem("borrowerName", me.name);
@@ -36,6 +38,28 @@ export default function Navbar({ onNavigate }) {
       }
     } catch (err) {
       console.error("Error fetching user profile:", err);
+    }
+  }
+
+  // 🟢 ดึงจำนวนคิวจองที่ยังไม่คืนสำหรับแสดงในเมนูมือถือ
+  async function fetchActiveBookingsCount() {
+    try {
+      const empParam = borrowerEmpId || borrowerName;
+      const res = await fetch(`${API_BASE}/bookings?borrower=${encodeURIComponent(empParam)}&role=${userRole}&isMyBooking=true`);
+      if (res.ok) {
+        const data = await res.json();
+        const count = (Array.isArray(data) ? data : []).filter(b => {
+          const bBorrower = (b.borrower || "").toLowerCase().trim();
+          const isMine = bBorrower === borrowerEmpId || bBorrower === borrowerName;
+          const isActive = b.status === 'active';
+          const hasVehicle = !!b.vehicle_id;
+          return isMine && isActive && hasVehicle;
+        }).length;
+
+        setActiveBookingCount(count);
+      }
+    } catch (err) {
+      console.error("ดึงจำนวนการจองไม่สำเร็จ:", err);
     }
   }
 
@@ -95,7 +119,6 @@ export default function Navbar({ onNavigate }) {
 
   return (
     <header className="navbar">
-      {/* 🟢 ฝั่งซ้าย: ปุ่มสามขีด (โชว์เฉพาะมือถือ/จอย่อ) */}
       <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
         <div ref={mobileMenuRef} className="mobile-menu-wrapper" style={{ position: "relative" }}>
           <button 
@@ -106,7 +129,6 @@ export default function Navbar({ onNavigate }) {
             <Menu size={20} />
           </button>
 
-          {/* Dropdown เมนูนำทาง + ออกจากระบบ รวมในสามขีดฝั่งซ้าย */}
           {isMobileMenuOpen && (
             <div className="mobile-dropdown-menu" style={{ left: 0, right: "auto" }}>
               <div style={{ padding: "8px 12px", fontSize: "12px", fontWeight: "bold", color: "var(--sidebar-text-dim)", borderBottom: "1px solid var(--sidebar-line)", marginBottom: "4px" }}>
@@ -116,9 +138,33 @@ export default function Navbar({ onNavigate }) {
               <button type="button" onClick={() => handleMenuClick("dashboard")} className="dropdown-item">
                 <LayoutGrid size={17} /> หน้าหลัก
               </button>
-              <button type="button" onClick={() => handleMenuClick("bookings")} className="dropdown-item">
-                <CalendarCheck size={17} /> การจองของฉัน
+
+              {/* 🟢 เมนูการจองของฉันในมือถือ พร้อม Badge แจ้งเตือน */}
+              <button type="button" onClick={() => handleMenuClick("bookings")} className="dropdown-item" style={{ justifyContent: "space-between" }}>
+                <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <CalendarCheck size={17} /> การจองของฉัน
+                </span>
+                {activeBookingCount > 0 && (
+                  <span 
+                    style={{
+                      backgroundColor: "#DC2626",
+                      color: "#FFFFFF",
+                      fontSize: "11px",
+                      fontWeight: "800",
+                      minWidth: "18px",
+                      height: "18px",
+                      borderRadius: "9px",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: "0 6px"
+                    }}
+                  >
+                    {activeBookingCount}
+                  </span>
+                )}
               </button>
+
               <button type="button" onClick={() => handleMenuClick("traffic")} className="dropdown-item">
                 <CalendarDays size={17} /> ปฏิทินการจอง
               </button>
@@ -149,15 +195,13 @@ export default function Navbar({ onNavigate }) {
         </div>
       </div>
 
-      {/* 🟢 ฝั่งขวา: โปรไฟล์ผู้ใช้สำหรับหน้าจอคอม Desktop */}
       <div className="navbar-actions">
         <div ref={dropdownRef} className="desktop-user-wrapper" style={{ position: "relative" }}>
           <button 
-            type="button"
-            className="navbar-user"
+            type="button" 
+            className="navbar-user" 
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
           >
-            {/* 🟢 เปลี่ยนเป็นไอคอน User แทนสีส้ม */}
             <div className="navbar-user-avatar">
               <User size={15} />
             </div>

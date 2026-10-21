@@ -76,7 +76,6 @@ export default function MyBookings({ onNavigate }) {
           const rawImg = matchedCar ? matchedCar.image : b.image;
           const liveCarMileage = matchedCar && matchedCar.mileage !== undefined ? Number(matchedCar.mileage) : 0;
 
-          // 🟢 ถ้าคิวยังรอคืนรถ (status === 'active') ให้ใช้ไมล์ล่าสุดของตัวรถเป็นไมล์ก่อนไปเสมอ
           const effectiveStartMileage = (b.status === 'active' && matchedCar) 
             ? liveCarMileage 
             : (b.start_mileage ?? liveCarMileage);
@@ -123,7 +122,6 @@ export default function MyBookings({ onNavigate }) {
     }
   }
 
-  // 🟢 เปิด Modal คืนรถ: ดึงไมล์ล่าสุดของตัวรถมาเป็นค่าตั้งต้นทันที
   function handleOpenReturnModal(booking) {
     const matchedCar = vehicles.find(c => c.id?.toLowerCase().trim() === (booking.vehicle_id || "").toLowerCase().trim());
     const baseMileage = matchedCar?.mileage !== undefined 
@@ -147,7 +145,6 @@ export default function MyBookings({ onNavigate }) {
 
     const currentBase = Number(returnTarget.liveStartMileage ?? returnTarget.start_mileage ?? 0);
     
-    // ยอมรับค่าไมล์เท่าเดิมได้
     if (Number(inputMileage) < currentBase) {
       setMileageError(`เลขไมล์ตอนคืนต้องไม่น้อยกว่าไมล์เดิมก่อนใช้ (${currentBase.toLocaleString()} ไมล์)`);
       return;
@@ -223,6 +220,7 @@ export default function MyBookings({ onNavigate }) {
     return true;
   });
 
+  // 🟢 จัดลำดับ: เอาคิวที่ส่งคืนล่าช้า หรือเลยกำหนดแล้วยังไม่คืนขึ้นบนสุดก่อน
   const filteredBookings = validOwnBookings
     .filter(booking => {
       const endDateStr = getSafeDateStr(booking.end_date);
@@ -238,6 +236,12 @@ export default function MyBookings({ onNavigate }) {
       }
     })
     .sort((a, b) => {
+      const isLateA = a.status === 'late_returned' || (a.status === 'active' && getSafeDateStr(a.end_date) < todayStr);
+      const isLateB = b.status === 'late_returned' || (b.status === 'active' && getSafeDateStr(b.end_date) < todayStr);
+
+      if (isLateA && !isLateB) return -1;
+      if (!isLateA && isLateB) return 1;
+
       if (b.id && a.id) return Number(b.id) - Number(a.id);
       return new Date(b.start_date) - new Date(a.start_date);
     });
@@ -302,7 +306,7 @@ export default function MyBookings({ onNavigate }) {
                       <span className="mybk-badge is-done" style={{ backgroundColor: "#F3F4F6", color: "#4B5563" }}>ไม่พบข้อมูลรถ</span>
                     )}
                     {booking.status === 'cancelled' && (
-                      <span className="mybk-badge is-cancelled"> ยกเลิกการจอง</span>
+                      <span className="mybk-badge is-cancelled">ยกเลิกการจอง</span>
                     )}
                     {booking.status === 'returned' && (
                       <span className="mybk-badge is-done" style={{ backgroundColor: "#DCFCE7", color: "#15803D" }}>คืนรถเรียบร้อย</span>
@@ -488,7 +492,7 @@ export default function MyBookings({ onNavigate }) {
               <CheckCircle size={32} />
             </div>
             <h3 style={{ margin: "0 0 8px 0", fontSize: "20px", fontWeight: "800", color: "#15803d" }}>ทำรายการสำเร็จ</h3>
-            <p style={{ margin: "0 0 24px 0", fontSize: "14px", color: "#4b5563" }}>{actionSuccessMessage}</p>
+            <p style={{ margin: "0 0 24px 0", fontSize: "14px", color: "#4b5563", whiteSpace: "pre-line", lineHeight: "1.6" }}>{actionSuccessMessage}</p>
             <button type="button" onClick={() => setActionSuccessMessage(null)} style={{ width: "100%", padding: "12px", backgroundColor: "#16a34a", color: "#fff", border: "none", borderRadius: "10px", fontWeight: "700", cursor: "pointer", fontSize: "15px" }}>
               ตกลง
             </button>

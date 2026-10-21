@@ -32,12 +32,16 @@ function toISO(date) {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, "0");
   const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+  return `${y}-${mm}-${d}`;
 }
 
 function formatDateToLocal(dateStr) {
   if (!dateStr) return "";
-  return toISO(new Date(dateStr));
+  const d = new Date(dateStr);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 const formatDateDisplay = (dateStr) => {
@@ -55,7 +59,13 @@ export default function TrafficCalendar({ currentUser, onNavigate }) {
   const [loading, setLoading] = useState(true);
   const [selectedBooking, setSelectedBooking] = useState(null);
 
-  const todayIso = toISO(new Date());
+  const todayIso = (() => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  })();
 
   const [cursor, setCursor] = useState(() => {
     const d = new Date();
@@ -92,7 +102,7 @@ export default function TrafficCalendar({ currentUser, onNavigate }) {
         .map((b) => {
           const sDate = formatDateToLocal(b.start_date ?? b.startDate);
           const eDate = formatDateToLocal(b.end_date ?? b.endDate);
-          const isOverdue = eDate < todayIso; // เลยกำหนดแล้วแต่ยังไม่คืน
+          const isOverdue = eDate < todayIso;
 
           return {
             id: b.id,
@@ -133,20 +143,17 @@ export default function TrafficCalendar({ currentUser, onNavigate }) {
     });
   }, [cursor]);
 
-  // 🟢 ตรวจสอบว่าในวันที่นั้นมีคิวจองหรือไม่ โดยอิงจาก effectiveEndDate
   function bookingsForDay(date) {
-    const iso = toISO(date);
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    const iso = `${y}-${m}-${d}`;
     const isToday = iso === todayIso;
 
     return bookings.filter((b) => {
       if (!b.startDate || !b.endDate) return false;
-
-      // 1. วันที่อยู่ในช่วงจองจริง
       const isInActualRange = b.startDate <= iso && b.endDate >= iso;
-
-      // 2. ถ้าเลยกำหนดแล้วยังไม่คืน ให้โชว์ค้างเตือนเฉพาะในช่อง "วันนี้" (ไม่ลากยาวถมทุกวันในอดีต)
       const isOverdueShowingToday = b.isOverdue && isToday;
-
       return isInActualRange || isOverdueShowingToday;
     });
   }
@@ -209,12 +216,14 @@ export default function TrafficCalendar({ currentUser, onNavigate }) {
           </button>
         </div>
 
+        {/* 🟢 ส่วนแสดงสัญลักษณ์แถบสี (Legend): เปลี่ยนเป็นแสดงชื่อรุ่นรถ */}
         {uniqueVehicles.length > 0 && (
           <div className="cal-legend">
             {uniqueVehicles.map((v) => (
               <span key={v.vehicleId} className="cal-legend-item">
                 <span className="cal-legend-dot" style={{ background: colorFor(v.vehicleId) }} />
-                {v.plate || v.vehicleModel}
+                {/* ดึงชื่อรุ่นรถมาแสดงก่อน หากไม่มีค่อยใช้ทะเบียน */}
+                {v.vehicleModel || v.plate}
               </span>
             ))}
           </div>
@@ -235,8 +244,12 @@ export default function TrafficCalendar({ currentUser, onNavigate }) {
             {days.map((date) => {
               const inMonth = date.getMonth() === cursor.getMonth();
               const dayBookings = bookingsForDay(date);
-              const isToday = toISO(date) === todayIso;
-              const dateIso = toISO(date);
+              
+              const y = date.getFullYear();
+              const m = String(date.getMonth() + 1).padStart(2, "0");
+              const d = String(date.getDate()).padStart(2, "0");
+              const dateIso = `${y}-${m}-${d}`;
+              const isToday = dateIso === todayIso;
 
               return (
                 <div
@@ -247,35 +260,35 @@ export default function TrafficCalendar({ currentUser, onNavigate }) {
                     <span>{date.getDate()}</span>
                   </span>
                   {dayBookings.map((b) => {
-  // เช็กว่าเป็นแถบที่แสดงเตือนค้างในวันปัจจุบันหรือไม่
-  const isOverdueNotice = b.isOverdue && dateIso === todayIso;
+                    const isOverdueNotice = b.isOverdue && dateIso === todayIso;
 
-  return (
-    <div
-      key={b.id}
-      onClick={(e) => handleBarClick(b, e)}
-      className="cal-booking-bar"
-      style={{ 
-        background: isOverdueNotice ? "#EF4444" : colorFor(b.vehicleId),
-        border: isOverdueNotice ? "1px solid #B91C1C" : "none",
-        cursor: "pointer",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between"
-      }}
-      title={isOverdueNotice ? "⚠️ เลยกำหนดสิ้นสุดแล้ว (ยังไม่คืนรถ)" : "คลิกเพื่อดูรายละเอียดการจอง"}
-    >
-      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-        {b.plate || b.vehicleModel}
-      </span>
-      {isOverdueNotice && (
-        <span style={{ fontSize: "9px", background: "rgba(0,0,0,0.3)", padding: "1px 4px", borderRadius: "3px", marginLeft: "4px" }}>
-          ค้างส่งคืน
-        </span>
-      )}
-    </div>
-  );
-})}
+                    return (
+                      <div
+                        key={b.id}
+                        onClick={(e) => handleBarClick(b, e)}
+                        className="cal-booking-bar"
+                        style={{ 
+                          background: isOverdueNotice ? "#EF4444" : colorFor(b.vehicleId),
+                          border: isOverdueNotice ? "1px solid #B91C1C" : "none",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between"
+                        }}
+                        title={isOverdueNotice ? "⚠️ เลยกำหนดการส่งคืนรถ" : "คลิกเพื่อดูรายละเอียดการจอง"}
+                      >
+                        {/* 🟢 ในตารางปฏิทิน: ยังคงแสดงเป็นทะเบียนรถตามเดิม */}
+                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {b.plate || b.vehicleModel}
+                        </span>
+                        {isOverdueNotice && (
+                          <span style={{ fontSize: "9px", background: "rgba(0,0,0,0.3)", padding: "1px 4px", borderRadius: "3px", marginLeft: "4px" }}>
+                            ค้างส่งคืน
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               );
             })}
@@ -353,7 +366,9 @@ export default function TrafficCalendar({ currentUser, onNavigate }) {
 
               <div style={{ display: "flex", alignItems: "center", gap: "8px", backgroundColor: "#F9FAFB", padding: "10px 12px", borderRadius: "8px" }}>
                 <Calendar size={16} style={{ color: "#059669" }} />
-                <span>กำหนดการจอง: <strong>{formatDateDisplay(selectedBooking.startDate)} - {formatDateDisplay(selectedBooking.endDate)}</strong></span>
+                <span>
+                  กำหนดการจอง: <strong style={{ color: "#111827" }}>{formatDateDisplay(selectedBooking.startDate)} - {formatDateDisplay(selectedBooking.endDate)}</strong>
+                </span>
               </div>
             </div>
 

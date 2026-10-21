@@ -426,8 +426,8 @@ app.post('/api/bookings', async (req, res) => {
             `👤 ผู้จอง: ${borrowerRealName} (${borrower})\n` +
             `👨🏻‍💻 แผนก: ${borrowerDept}\n` +
             `🚘 รถยนต์: ${vehicle_model}\n` +
-            `📍 งานโครงการ: ${destination}\n` +
-            `📟 ไมล์ก่อนเดินทาง: ${startMileage.toLocaleString()} ไมล์\n` +
+            `🏬 งานโครงการ: ${destination}\n` +
+            `📟 เลขไมล์ก่อนใช้งาน: ${startMileage.toLocaleString()} ไมล์\n` +
             `🗓️ ตั้งแต่วันที่: ${formattedStart}\n` +
             `🗓️ ถึงวันที่: ${formattedEnd}\n` +
             `______________________________`;
@@ -678,7 +678,7 @@ async function checkAndNotifyExpiringACT() {
             }
         });
         if (notifyList.length === 0) {
-            console.log("ℹ️ [ACT Check] วันนี้ไม่มีรถที่ถึงรอบการยิงแจ้งเตือน");
+            console.log("ℹ️ [ACT Check] วันนี้ไม่มีรถที่ถึงรอบการแจ้งเตือน");
             return;
         }
 
@@ -709,5 +709,5 @@ async function checkAndNotifyExpiringACT() {
 }
 
 app.listen(5000, '0.0.0.0', () => {
-    console.log('🚀 API CRUD Server รันเรียบร้อยที่พอร์ต 5000');
+    console.log(' API CRUD Server รันเรียบร้อยที่พอร์ต 5000');
 });

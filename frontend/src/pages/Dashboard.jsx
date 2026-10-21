@@ -132,6 +132,7 @@ export default function Dashboard({ onNavigate }) {
     return null;
   }
 
+  // 🟢 ตรวจสอบสถานะว่าติดจองในวันนี้หรือไม่
   function isCarBookedToday(vehicleId) {
     return bookings.some(b => {
       if (b.vehicleId !== vehicleId) return false;
@@ -239,7 +240,7 @@ export default function Dashboard({ onNavigate }) {
       const resData = await response.json();
 
       if (response.ok) {
-        setBookingSuccess(`${selectedVehicle.model}`);
+        setBookingSuccess(selectedVehicle.model);
         setModalMode(null);
         setSelectedVehicle(null);
         setStartDate("");
@@ -254,13 +255,14 @@ export default function Dashboard({ onNavigate }) {
     }
   }
 
-  const activeBookingsCount = bookings.filter(b => {
-    if (b.status === "cancelled" || b.status === "returned" || b.status === "late_returned") return false;
-    return b.endDate >= todayStr;
-  }).length;
-
   const availableCount = vehicles.filter(v => v.status !== "maintenance").length;
   const maintenanceCount = vehicles.filter(v => v.status === "maintenance").length;
+
+  // 🟢 คำนวณจำนวนรถที่พร้อมและว่างสำหรับจองวันนี้จริง
+  const availableTodayCount = vehicles.filter(v => {
+    if (v.status === "maintenance") return false;
+    return !isCarBookedToday(v.id);
+  }).length;
 
   function goToVehicle(direction) {
     if (!selectedVehicle || vehicles.length < 2) return;
@@ -325,13 +327,16 @@ export default function Dashboard({ onNavigate }) {
               <div className="hero-stat-lbl">รถยนต์ที่ซ่อมบำรุง</div>
             </div>
           </div>
+
+          {/* 🟢 แสดงตัวเลขรถยนต์ที่ว่างวันนี้จริง */}
           <div className="hero-stat-row">
             <span className="hero-stat-gem" />
             <div>
-              <div className="hero-stat-num">{activeBookingsCount}</div>
-              <div className="hero-stat-lbl">รถยนต์ที่ถูกจอง</div>
+              <div className="hero-stat-num">{availableTodayCount}</div>
+              <div className="hero-stat-lbl">รถยนต์ที่ว่าง</div>
             </div>
           </div>
+
           <div className="hero-stats-footer">
             <button type="button" className="hero-stats-link" onClick={() => onNavigate("traffic")}>
               ดูปฏิทินการจอง <ArrowRight size={14} />
@@ -345,6 +350,7 @@ export default function Dashboard({ onNavigate }) {
         {vehicles.map((vehicle) => {
           const actWarning = getActWarning(vehicle.act_expiry_date);
           const bookedToday = isCarBookedToday(vehicle.id);
+          const isMaintenance = vehicle.status === "maintenance";
 
           return (
             <div 
@@ -360,29 +366,71 @@ export default function Dashboard({ onNavigate }) {
                 border: "1px solid #f3f4f6"
               }}
             >
-              {bookedToday && (
+              {/* 🟢 สายคาดเฉียงมุมซ้ายบน */}
+              {isMaintenance ? (
                 <div style={{
                   position: "absolute",
-                  top: "16px",
+                  top: "18px",
                   left: "-32px",
+                  width: "120px",
                   transform: "rotate(-45deg)",
-                  backgroundColor: "#f3e249",
-                  color: "#ab8402",
-                  padding: "4px 34px",
+                  backgroundColor: "#DC2626",
+                  color: "#FFFFFF",
+                  padding: "5px 0",
                   fontSize: "11px",
                   fontWeight: "800",
                   letterSpacing: "0.5px",
-                  boxShadow: "0 2px 8px rgba(255, 224, 88, 0.4)",
+                  boxShadow: "0 2px 8px rgba(220, 38, 38, 0.4)",
                   zIndex: 20,
                   textAlign: "center",
                   pointerEvents: "none"
                 }}>
-                  ติดจอง 
+                  ชำรุด
+                </div>
+              ) : bookedToday ? (
+                <div style={{
+                  position: "absolute",
+                  top: "18px",
+                  left: "-32px",
+                  width: "120px",
+                  transform: "rotate(-45deg)",
+                  backgroundColor: "#f5e452",
+                  color: "#854d0e",
+                  padding: "5px 0",
+                  fontSize: "11px",
+                  fontWeight: "800",
+                  letterSpacing: "0.5px",
+                  boxShadow: "0 2px 8px rgba(245, 228, 82, 0.4)",
+                  zIndex: 20,
+                  textAlign: "center",
+                  pointerEvents: "none"
+                }}>
+                  ติดจอง
+                </div>
+              ) : (
+                <div style={{
+                  position: "absolute",
+                  top: "18px",
+                  left: "-32px",
+                  width: "120px",
+                  transform: "rotate(-45deg)",
+                  backgroundColor: "#10B981",
+                  color: "#FFFFFF",
+                  padding: "5px 0",
+                  fontSize: "11px",
+                  fontWeight: "800",
+                  letterSpacing: "0.5px",
+                  boxShadow: "0 2px 8px rgba(16, 185, 129, 0.4)",
+                  zIndex: 20,
+                  textAlign: "center",
+                  pointerEvents: "none"
+                }}>
+                  ว่าง
                 </div>
               )}
 
               {isAdmin && actWarning && (
-                <div style={{ position: "absolute", top: "10px", right: "10px", zIndex: 10, backgroundColor: "#EF4444", color: "#fff", padding: "4px 8px", borderRadius: "6px", fontSize: "11px", fontWeight: "bold", display: "flex", alignItems: "center", gap: "4px" }}>
+                <div style={{ position: "absolute", top: "10px", right: "10px", zIndex: 30, backgroundColor: "#EF4444", color: "#fff", padding: "4px 8px", borderRadius: "6px", fontSize: "11px", fontWeight: "bold", display: "flex", alignItems: "center", gap: "4px" }}>
                   <AlertTriangle size={13} /> {actWarning}
                 </div>
               )}
@@ -488,7 +536,7 @@ export default function Dashboard({ onNavigate }) {
 
                   <div className="booking-field" style={{ marginTop: "12px", marginBottom: "16px" }}>
                     <label style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                      <MapPin size={14} style={{ color: "var(--gold-deep)" }} /> งานโครงการ *
+                      <MapPin size={14} style={{ color: "var(--gold-deep)" }} /> งานโครงการ 
                     </label>
                     <input
                       type="text"
@@ -560,7 +608,7 @@ export default function Dashboard({ onNavigate }) {
               </h3>
               <p style={{ margin: "0 0 16px 0", fontSize: "13px", color: "#6b7280" }}>
                 {conflictBooking.isHoldingOverdue 
-                  ? "รถคันนี้เลยกำหนดการใช้งานแล้ว แต่ผู้จองคนก่อนหน้ายังไม่ได้ทำการกดส่งคืนรถ" 
+                  ? "ผู้ใช้งานคนก่อนหน้ายังไม่ได้ทำการกดส่งคืนรถ" 
                   : "ช่วงวันที่คุณระบุตรงกับคิวที่มีผู้ใช้งานอื่นทำการจองไว้แล้ว"}
               </p>
             </div>
@@ -568,7 +616,7 @@ export default function Dashboard({ onNavigate }) {
             <div style={{ backgroundColor: "#f9fafb", padding: "14px", borderRadius: "12px", border: "1px solid #f3f4f6", display: "flex", flexDirection: "column", gap: "10px", marginBottom: "20px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13.5px", color: "#111827", fontWeight: "700", borderBottom: "1px solid #e5e7eb", paddingBottom: "8px" }}>
                 <User size={16} style={{ color: "#d97706", flexShrink: 0 }} /> 
-                <span>ผู้ถือครองรถ: <strong style={{ color: "#b45309" }}>{conflictBooking.borrowerName}</strong></span>
+                <span>ผู้ใช้รถ: <strong style={{ color: "#b45309" }}>{conflictBooking.borrowerName}</strong></span>
               </div>
 
               <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", color: "#374151" }}>
@@ -589,7 +637,7 @@ export default function Dashboard({ onNavigate }) {
                   {conflictBooking.isHoldingOverdue ? "กำหนดเดิมที่ต้องคืน:" : "ช่วงวันที่ติดจอง:"}{" "}
                   <strong style={{ color: conflictBooking.isHoldingOverdue ? "#dc2626" : "#047857" }}>
                     {formatDateDisplay(conflictBooking.startDate)} - {formatDateDisplay(conflictBooking.endDate)}
-                    {conflictBooking.isHoldingOverdue ? " (เลยกำหนด)" : ""}
+                    {conflictBooking.isHoldingOverdue ? " " : ""}
                   </strong>
                 </span>
               </div>
@@ -613,7 +661,6 @@ export default function Dashboard({ onNavigate }) {
             <div style={{ width: "56px", height: "56px", borderRadius: "50%", backgroundColor: "#f0fdf4", display: "flex", alignItems: "center", justifyContent: "center", color: "#16a34a", margin: "0 auto 16px auto" }}><CheckCircle size={32} /></div>
             <h3 style={{ margin: "0 0 8px 0", fontSize: "20px", fontWeight: "800", color: "#15803d" }}>บันทึกการจองสำเร็จ!</h3>
 
-            {/* 🟢 ใช้ <br /> ตัดบรรทัดตรงๆ บรรทัดล่างจะอยู่ตรงกลางแน่นอน 100% */}
             <p style={{ margin: "0 0 24px 0", fontSize: "14.5px", color: "#4b5563", textAlign: "center", lineHeight: "1.7" }}>
               ทำการจองรถยนต์ {bookingSuccess}
               <br />
@@ -631,7 +678,7 @@ export default function Dashboard({ onNavigate }) {
       {bookingError && (
         <div className="modal-overlay" onClick={() => setBookingError(null)} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.65)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 3000, backdropFilter: "blur(4px)" }}>
           <div className="fg-rise" style={{ maxWidth: "400px", width: "90%", backgroundColor: "#fff", padding: "28px", borderRadius: "16px", border: "1px solid #fee2e2", textAlign: "center" }} onClick={e => e.stopPropagation()}>
-            <div style={{ width: "56px", height: "56px", borderRadius: "50%", backgroundColor: "#fef2f2", display: "flex", alignItems: "center", justifyContent: "center", color: "#dc2626", margin: "0 auto 16px auto" }}><AlertCircle size={32} /></div>
+            <div style={{ width: "56px", height: "56px", borderRadius: "50%", backgroundColor: "#f0fdf4", display: "flex", alignItems: "center", justifyContent: "center", color: "#dc2626", margin: "0 auto 16px auto" }}><AlertCircle size={32} /></div>
             <h3 style={{ margin: "0 0 8px 0", fontSize: "19px", fontWeight: "800", color: "#991b1b" }}>แจ้งเตือนข้อมูลไม่ถูกต้อง</h3>
             <p style={{ margin: "0 0 24px 0", fontSize: "14px", color: "#4b5563" }}>{bookingError}</p>
             <button type="button" onClick={() => setBookingError(null)} style={{ width: "100%", padding: "12px", backgroundColor: "#dc2626", color: "#fff", border: "none", borderRadius: "10px", fontWeight: "700", cursor: "pointer", fontSize: "15px" }}>
